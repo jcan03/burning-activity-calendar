@@ -6,6 +6,15 @@ Guidance for AI coding agents and humans in this repository. This is Lee Bergstr
 
 Build a web app that harmonizes MODIS and VIIRS active-fire hotspots into a burning-activity calendar, so a user can compare current burning in a selected area with its history. Challenge facts, data limits, and the current proposal are in [docs/challenge.md](docs/challenge.md). Read that before changing data handling or the calendar.
 
+## Sensor reference
+
+Facts about the sensors, satellites, orbits, fire products and FIRMS files are in [docs/sensor-reference.md](docs/sensor-reference.md). Read the relevant section before changing how hotspots from different sensors are loaded, filtered, counted or combined.
+
+- It states facts only. It does not choose a harmonization method.
+- Start with its "At a glance" list and the "Which sensors were flying when" table.
+- Per-topic detail and full source lists are in [docs/sensor-research/](docs/sensor-research/). Those fifteen files are large (about 650 KB together). Open one only when the report's section is not enough.
+- It was compiled on 2026-11-13, after `docs/challenge.md`, and is the newer source where the two differ. For example, open yearly country files do exist for NOAA-20, under the prefix `viirs-jpss1`.
+
 ## Deadline
 
 Hackathon: Saturday 14 November through Sunday 15 November 2026. Submissions close Sunday 15 November 2026 at 11:59 PM Kamloops time (UTC-7).
