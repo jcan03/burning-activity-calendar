@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local FIRMS downloads
+data/*
+!data/.gitkeep
