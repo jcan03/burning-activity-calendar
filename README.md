@@ -15,6 +15,12 @@ Fire detections come from [FIRMS](https://firms.modaps.eosdis.nasa.gov/api/):
 - Open yearly country CSVs at the [FIRMS country data page](https://firms.modaps.eosdis.nasa.gov/data/country/)
 - Near-real-time and other recent data via the FIRMS API, which needs a MAP_KEY from the [FIRMS MAP_KEY request page](https://firms.modaps.eosdis.nasa.gov/api/map_key)
 
+## Documentation
+
+- [docs/challenge.md](docs/challenge.md): what the challenge asks for, the author's clarifications, FIRMS access notes and the team's proposed direction.
+- [docs/sensor-reference.md](docs/sensor-reference.md): sourced facts about MODIS and VIIRS needed to harmonize the records. It covers the satellites and orbits, the instruments, coverage and overpass timing, the detection algorithms, FIRMS columns and processing streams, outages, and where sources disagree. It states facts only and recommends no method.
+- [docs/sensor-research/](docs/sensor-research/): the fifteen working files behind the sensor reference, one per topic, each with its full source list.
+
 ## Setup
 
 1. Create and activate a virtual environment:
@@ -37,4 +43,5 @@ Fire detections come from [FIRMS](https://firms.modaps.eosdis.nasa.gov/api/):
 - `README.md`: this file
 - `.env.example`: template for the FIRMS MAP_KEY (copy to `.env`, which is gitignored)
 - `requirements.txt`: Python dependencies
+- `docs/`: challenge reference, sensor reference and its research files (see [Documentation](#documentation))
 - `data/`: local FIRMS downloads (gitignored except `data/.gitkeep`)
