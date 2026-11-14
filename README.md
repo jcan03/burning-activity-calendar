@@ -21,6 +21,9 @@ Fire detections come from [FIRMS](https://firms.modaps.eosdis.nasa.gov/api/):
 - [docs/sensor-reference.md](docs/sensor-reference.md): sourced facts about MODIS and VIIRS needed to harmonize the records. It covers the satellites and orbits, the instruments, coverage and overpass timing, the detection algorithms, FIRMS columns and processing streams, outages, and where sources disagree. It states facts only and recommends no method.
 - [docs/sensor-research/](docs/sensor-research/): the fifteen working files behind the sensor reference, one per topic, each with its full source list.
 - [docs/harmonization-research.md](docs/harmonization-research.md): research on how to combine the two sensors, with a recommended method and how well it tested.
+- [docs/harmonization-evidence.md](docs/harmonization-evidence.md): measurements on the team's FIRMS data for the Interior BC box, with what published studies, operational systems and BC's fire records show, set out for each harmonization choice. It does not make the choice. Working files: [docs/harmonization-evidence-research/](docs/harmonization-evidence-research/).
+- [docs/harmonization-methods.md](docs/harmonization-methods.md): a literature review and catalogue of candidate harmonization methods, including sensor-fusion research, with precedent, fit to FIRMS rows and effort for each. It lists options and does not rank them. Working files: [docs/harmonization-methods-research/](docs/harmonization-methods-research/).
+- [docs/harmonization-tests.md](docs/harmonization-tests.md): tests on the team's data of the questions the evidence document left open, with how strong each result is and how they relate to the recommended method. It is the newest of these documents. Working files: [docs/harmonization-tests-research/](docs/harmonization-tests-research/).
 
 ## Setup
 
@@ -87,5 +90,5 @@ The tests need the database from step 5 (and the terrain from step 6 for the ter
 - `harmonize.py`: interim MODIS and VIIRS harmonization, to be replaced by the team's final method
 - `test_app.py`: behaviour tests for the calendar numbers, the animations, the terrain and the app
 - `.streamlit/config.toml`: light theme and no usage statistics
-- `docs/`: challenge reference, sensor reference and its research files (see [Documentation](#documentation))
-- `data/`: local FIRMS downloads (gitignored except `data/.gitkeep`)
+- `docs/`: challenge reference, sensor reference, harmonization documents and their research files (see [Documentation](#documentation))
+- `data/`: local FIRMS downloads (gitignored except `data/.gitkeep`). The analysis files behind the harmonization evidence and tests (scripts, result tables, catalogue downloads) are kept under `data/harmonization-analysis/` on the machine that ran them and are not in the repository.
