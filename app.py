@@ -260,7 +260,7 @@ with map_tab:
     view = bar[0].radio("View", ["Map", "Timelapse", "3D"], horizontal=True, label_visibility="collapsed")
     if view == "3D":
         wide = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) > 1.5
-        cell_km = bar[1].selectbox("Square size", [2, 5, 10], index=1 if wide else 0, label_visibility="collapsed",
+        cell_km = bar[1].selectbox("Square size", [1, 2, 5, 10], index=2 if wide else 1, label_visibility="collapsed",
                                    format_func=lambda km: f"{km} km squares")
         add_up = bar[2].toggle("Add up through the period")
         orbit = bar[3].toggle("Rotate while it plays")
@@ -362,6 +362,8 @@ changed five times.
 - Months since August 2026 use provisional near-real-time data and may change.
 - Dates are in Pacific time (UTC-7), as in Kamloops, not the UTC dates in the FIRMS files.
 - Small areas have few hotspots, so many months cannot be ranked.
+- Colours: brighter means more burning, on every chart and map. Blue marks below normal and amber above. The colours
+  were chosen to stay distinct with colour-blind vision.
 - Low-confidence detections and one fixed industrial heat source west of Kamloops are removed.
 """)
 

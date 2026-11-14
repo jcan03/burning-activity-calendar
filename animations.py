@@ -8,13 +8,15 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from charts import CITIES, INK, MODIS_COLOR, MUTED, VIIRS_COLOR, map_frame, relief
+from charts import ACCENT, CITIES, FIRE, INK, MODIS_COLOR, MUTED, PAGE, VIIRS_COLOR, map_frame, relief
 from harmonize import MODIS, in_box
 
-FIRE = ["#ffd84d", "#ffa63d", "#f26a2e", "#cf2f1f", "#8c1014"]  # low to high activity
-# Ground colours by elevation: water, then dry valley floors, forested plateaus and bare summits.
-LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d9cfa0"], [0.20, "#c8c890"], [0.33, "#9db87a"],
-        [0.50, "#6f9b68"], [0.66, "#5a8160"], [0.78, "#8d8b76"], [0.90, "#c9c5b8"], [1.0, "#f5f4f0"]]
+COLUMNS = FIRE[2:]     # the 3D columns take the ramp from deep red up: a column only stands where something burned
+CHAR = "#241c18"       # burn-scar outlines and place names, which sit on the 3D view's light ground
+# Ground colours by elevation: water, then dry valley floors, forested plateaus and bare summits. The greens lean
+# towards blue so that orange columns stay distinct from the forest with red-green colour-blind vision.
+LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d2cba5"], [0.20, "#bfc296"], [0.33, "#96b68c"],
+        [0.50, "#679878"], [0.66, "#4e7e69"], [0.78, "#898a7c"], [0.90, "#c9c7bd"], [1.0, "#f5f4f0"]]
 LOW, HIGH = 200, 2800  # metres at the first and last land colour
 GROUND_PIXELS = 180    # cells along the longer side of the 3D ground; more is sharper but slower to play
 RELIEF = 0.04          # the ground's highest point stands this share of the area's width above its lowest
@@ -49,7 +51,7 @@ def timeline(index, start, stop):
     fig.add_bar(x=spans.start_time, y=[s.max() or 1] * len(spans), offset=0, customdata=months, hovertext=hints,
                 width=(spans.end_time - spans.start_time).total_seconds() * 1000, hoverinfo="text",
                 selected=hidden, unselected=hidden, **hidden)
-    fig.add_vrect(x0=start, x1=stop + pd.Timedelta(days=1), fillcolor=VIIRS_COLOR, opacity=0.25, line_width=0)
+    fig.add_vrect(x0=start, x1=stop + pd.Timedelta(days=1), fillcolor=ACCENT, opacity=0.25, line_width=0)
     fig.update_xaxes(fixedrange=True, **axis)
     fig.update_yaxes(visible=False, fixedrange=True)
     fig.update_layout(height=110, margin=dict(l=10, r=10, t=5, b=5), bargap=0, barmode="overlay", dragmode=False,
@@ -135,10 +137,10 @@ def timelapse(points, bbox, start, stop, max_dots=1000):
 
 
 PLAYER = """
-<style>body { margin: 0; overflow: hidden; }</style>
-<div style="font:14px sans-serif;color:#3b3b38;display:flex;gap:10px;align-items:center;padding:4px 8px">
-  <button id="play" style="width:72px;padding:5px;cursor:pointer">Play</button>
-  <input id="step" type="range" min="0" max="__LAST__" value="0" style="flex:1">
+<style>body { margin: 0; overflow: hidden; background: __PAGE__; }</style>
+<div style="font:14px sans-serif;color:__INK__;display:flex;gap:10px;align-items:center;padding:4px 8px">
+  <button id="play" style="width:72px;padding:5px;cursor:pointer;color:__INK__;background:#2a2422;border:1px solid #5a524d;border-radius:4px">Play</button>
+  <input id="step" type="range" min="0" max="__LAST__" value="0" style="flex:1;accent-color:__ACCENT__">
   <b id="date" style="width:190px;text-align:right"></b>
 </div>
 __PLOT__
@@ -312,7 +314,7 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
         z=np.where(on, np.where(np.arange(8) > 3, (base + first)[:, None], foot[:, None]), 0).ravel(),
         i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
         intensity=np.repeat(first / tallest, 12), intensitymode="cell", cmin=0, cmax=1, showscale=False,
-        colorscale=[[i / 4, c] for i, c in enumerate(FIRE)], flatshading=True, hoverinfo="skip",
+        colorscale=[[i / 4, c] for i, c in enumerate(COLUMNS)], flatshading=True, hoverinfo="skip",
         lighting=dict(ambient=0.6, diffuse=0.8, specular=0.05, roughness=0.9), lightposition=dict(x=-2000, y=-3000, z=6000)))
     bottom = 0
     if land is None:
@@ -334,14 +336,14 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     city_y = np.array([(lat - south) * 111.2 for lat, lon in cities.values()])
     fig.add_scatter3d(x=city_x, y=city_y, z=ground_at(city_x, city_y) + 0.02 * tallest,
                       mode="markers+text", text=list(cities), textposition="top center", hoverinfo="skip",
-                      marker=dict(size=3, color=INK), textfont=dict(size=12, color=INK))
+                      marker=dict(size=3, color=CHAR), textfont=dict(size=12, color=CHAR))
     # Burn scars: the page's script draws a dark line here around big patches that burned in the last 12 months.
-    fig.add_scatter3d(x=[None], y=[None], z=[None], mode="lines", line=dict(color="#241c18", width=5), hoverinfo="skip")
+    fig.add_scatter3d(x=[None], y=[None], z=[None], mode="lines", line=dict(color=CHAR, width=5), hoverinfo="skip")
     keep = max(1, round(n * 365 / ((stop - start).days + 1)))    # how many frames make 12 months
     eye = dict(x=0.09, y=-1.1, z=0.62)
     ceiling = ground.max() + tallest * 1.05
     fig.update_layout(
-        height=height - 46, margin=dict(l=0, r=0, t=0, b=0), showlegend=False,
+        height=height - 46, margin=dict(l=0, r=0, t=0, b=0), showlegend=False, paper_bgcolor=PAGE,
         # The longer side is 1 whatever the area's shape, so a tall area does not run off the bottom of the view.
         scene=dict(aspectmode="manual", aspectratio=dict(x=wide / max(wide, tall), y=tall / max(wide, tall),
                                                          z=0.4 * (ceiling - bottom) / (tallest * 1.05)),
@@ -360,4 +362,5 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     plot = fig.to_html(full_html=False, include_plotlyjs=True, div_id="plot", config={"displayModeBar": False})
     # The plot goes in last: it carries all of plotly.js, which must not be searched for the other markers.
     html = PLAYER.replace("__LAST__", str(n - 1)).replace("__DATA__", json.dumps(data, separators=(",", ":")))
+    html = html.replace("__PAGE__", PAGE).replace("__INK__", INK).replace("__ACCENT__", ACCENT)
     return html.replace("__PLOT__", plot), top, cell_km, stretch
