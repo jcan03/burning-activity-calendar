@@ -17,7 +17,7 @@ LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d9cfa0"], [0.20, "#c8c890"
         [0.50, "#6f9b68"], [0.66, "#5a8160"], [0.78, "#8d8b76"], [0.90, "#c9c5b8"], [1.0, "#f5f4f0"]]
 LOW, HIGH = 200, 2800  # metres at the first and last land colour
 GROUND_PIXELS = 180    # cells along the longer side of the 3D ground; more is sharper but slower to play
-RELIEF = 0.08          # the ground's highest point stands this share of the area's width above its lowest
+RELIEF = 0.04          # the ground's highest point stands this share of the area's width above its lowest
 # Corner offsets of a column (four at the base, four at the top) and the 12 triangles that close it.
 CORNER_X, CORNER_Y = np.array([-1, 1, 1, -1, -1, 1, 1, -1]), np.array([-1, -1, 1, 1, -1, -1, 1, 1])
 FACES = np.array([[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4],
