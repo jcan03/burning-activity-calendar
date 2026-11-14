@@ -4,6 +4,8 @@ Team reference for City of Kamloops & Co. It collects the sensor, satellite, orb
 
 Compiled 2026-11-13 from web research. Fourteen topics were researched, each was re-checked against primary sources by a second agent, and a final pass reconciled the places where topics disagreed. The fifteen working files are in [sensor-research/](sensor-research/), each with its full source list and a status tag on every fact. Each section below links to its file.
 
+Corrected and extended on 2026-11-14, after tests on the team's own data and a check against NASA's open granule catalogue. The corrections are listed, with their sources, in [Changes since first compiled](#changes-since-first-compiled). The research, the checks and these corrections were done with AI agents (Claude). The team's own measurements are in [harmonization-evidence.md](harmonization-evidence.md) and [harmonization-tests.md](harmonization-tests.md).
+
 How to read the values:
 
 - A linked source means the page was opened on 2026-11-13 and supports the value.
@@ -25,7 +27,7 @@ The facts that bear most on combining the records. Each is expanded and sourced 
 8. **The two FIRMS products use different algorithms.** The confidence columns are on different scales with different meanings, and VIIRS "high" means a saturated pixel.
 9. **Fire radiative power is measured differently.** MODIS uses its own 4 µm band at 1 km. The VIIRS 375 m product borrows the 750 m M13 band and splits the value among pixels.
 10. **A MODIS-like VIIRS product exists outside FIRMS.** The VIIRS 750 m product runs a port of the MODIS algorithm on every VIIRS satellite, and NASA describes its performance as comparable to Aqua MODIS.
-11. **The newest months of any download are near-real-time rows.** They lack the `type` column, assign `daynight` by a different rule, and are replaced by standard data after two to five months. The `version` column tells them apart.
+11. **The newest months of any download are near-real-time rows.** They lack the `type` column and are documented as assigning `daynight` by a different rule, although in the team's data the labels match the standard rule. They are replaced by standard data after about two and a half to three and a half months in the team's data (sources give two to five). The `version` column tells them apart.
 12. **Open yearly Canada files exist for three of the four records.** MODIS 2000–2025, Suomi NPP 2012–2025 and NOAA-20 2018–2025 need no key. NOAA-21 has no country files.
 13. **The versions in the archive are consistent.** MODIS is Collection 6 or 6.1 throughout, which differ by 0.001% in counts. VIIRS is Collection 2 throughout.
 14. **There are multi-week gaps.** Terra in June 2001, March 2002 and October 2022; Aqua in August 2020 and April 2022; Suomi NPP in July and August 2022.
@@ -41,7 +43,7 @@ Five sensors feed the FIRMS hotspot record. Each row is a period bounded by a sa
 | 4 Jul 2002 – 19 Jan 2012 | Terra MODIS, Aqua MODIS | 2 | Both orbits held at 10:30 and 13:30 to within a few minutes. |
 | 20 Jan 2012 – 31 Mar 2018 | Terra, Aqua, Suomi NPP VIIRS | 3 | First 375 m data. |
 | 1 Apr 2018 – 28 Feb 2023 | Terra, Aqua, Suomi NPP, NOAA-20 VIIRS | 4 | The Terra and Aqua orbits begin to drift inside this period (2020–2022). |
-| 1 Mar 2023 – 2 Nov 2026 15:40 | Terra, Aqua, Suomi NPP, NOAA-20, NOAA-21 VIIRS | 5 | The NOAA-21 start is 1 Mar 2023 on the FIRMS archive download page and 17 Jan 2024 in the FIRMS FAQ. See [Disagreements between sources](#disagreements-between-sources). |
+| 1 Mar 2023 – 2 Nov 2026 15:40 | Terra, Aqua, Suomi NPP, NOAA-20, NOAA-21 VIIRS | 5 | The NOAA-21 start is 1 Mar 2023 on the FIRMS archive download page and 17 Jan 2024 in the FIRMS FAQ. The team's standard rows begin on 2 Mar 2023, which agrees with the archive page. See [Disagreements between sources](#disagreements-between-sources). |
 | 2 Nov 2026 15:40 – present | Terra, Aqua, NOAA-20, NOAA-21 | 4 | Suomi NPP data ended permanently. November 2026 is split by this change. |
 
 Projected next changes: Terra end of science about February 2027, Aqua about September 2027, and the launch of JPSS-4 (a fourth VIIRS) planned for 1 September 2027.
@@ -85,6 +87,7 @@ Both satellites held their crossing times for about two decades and then stopped
 | Direction of drift | Earlier in the morning | Later in the afternoon |
 | Crossing time on 13 Nov 2026 (computed) | about 08:33 | about 15:49 |
 
+- **Measured confirmation of the November 2026 crossing times.** In the team's box in Interior British Columbia, the median local solar time of Terra's daytime hotspots moved from about 11:14 across 2012–2021 (stable years) to 09:20 in 2026, and that of Aqua's from about 12:57 to 14:51. The shift is about 1.9 hours for each. The computed crossing times above move by about 2.0 hours for Terra (10:30 to 08:33) and about 2.3 hours for Aqua (13:30 to 15:49). The two agree in direction and roughly in size. The values are not the same quantity: the measured values are medians of hotspot times, which vary across the swath and with the daily fire cycle, and the computed values are equator crossings. The computed values are kept as given. Sources: [a09-drift-curve.md](harmonization-tests-research/a09-drift-curve.md), table of pass times; [harmonization-evidence.md](harmonization-evidence.md), "MODIS data since 2022"; checked against the team's hotspot table on 2026-11-14.
 - The 16-day repeating ground track (held to ±20 km) was lost within months of the last altitude maneuver on each satellite. Source: [Twedt et al. 2023](https://ntrs.nasa.gov/api/citations/20240001409/downloads/2023_SPIE_Twedt_MODIS_EV_orbit_drift_manuscript_v4.pdf).
 - NASA publishes no year-by-year table of crossing time. The Terra and Aqua pages show it only as plots. Dated values found: Terra reached 10:15 by fall 2022, and Aqua passed 13:45 in February 2023.
 - A lower orbit gives slightly narrower swaths and slightly smaller pixels. No primary source quantifies the effect on the fire product. The MODIS fire team describes the effect of drift on fire counts as under investigation.
@@ -407,20 +410,21 @@ Column names and values as they appear in FIRMS CSV files. The headers were read
 | `bright_t31` / `bright_ti5` | `bright_t31`: band 31, K | `bright_ti5`: I5, K | Different wavelengths (11.0 and 11.45 µm). |
 | `scan`, `track` | About 1.0–4.8 and 1.0–2.0 km | About 0.3–0.8 km for both | Actual pixel size across and along the track. MODIS has one decimal place, VIIRS two. The ranges are expected values from the pixel geometry, not read from a full file. |
 | `acq_date` | `YYYY-MM-DD` | Same | UTC date. |
-| `acq_time` | `HHMM` | Same | UTC. Zero-padded text in country files (`0130`). FIRMS tutorials parse it as an integer (`3` means 00:03). |
+| `acq_time` | `HHMM` | Same | UTC, in whole minutes. Zero-padded text in country files (`0130`). FIRMS tutorials parse it as an integer (`3` means 00:03). |
 | `satellite` | `Terra`, `Aqua` | `N` (Suomi NPP), `N20`, `N21` | Documentation says `T` and `A`; the files say `Terra` and `Aqua`. |
 | `instrument` | `MODIS` | `VIIRS` | |
 | `confidence` | Integer 0–100 | `l`, `n`, `h` | See [Confidence](#confidence). |
 | `version` | `6.1NRT` for near-real-time; `6.2`, `6.03` or `61.03` in standard country files | `2.0NRT`, `2.0RT`, `2.0URT` for near-real-time; `2` for standard | The only per-row marker of near-real-time versus standard data. |
 | `frp` | MW | MW | Computed differently. See [Fire radiative power](#fire-radiative-power). |
-| `daynight` | `D`, `N` | `D`, `N` | Assigned by different rules in near-real-time and standard data (below). |
+| `daynight` | `D`, `N` | `D`, `N` | Documented as assigned by different rules in near-real-time and standard data (below). In the team's data both match one rule. |
 | `type` | 0–3, standard files only | 0–3, standard files only | Absent from near-real-time files. |
 
 Sources: [FIRMS attributes page](https://www.earthdata.nasa.gov/data/tools/firms/active-fire-data-attributes-modis-viirs), [FIRMS API tutorial](https://firms.modaps.eosdis.nasa.gov/content/academy/data_api/firms_api_use.html), [country file index](https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt).
 
 - **Time of day.** Local solar time is not in the file. It has to be worked out from `acq_time` and longitude. The UTC date and the local date differ for part of each day at most longitudes.
-- **Meaning of `acq_time`.** NASA does not say whether it is the time of the pixel or the start of the granule. Observed MODIS values are not multiples of five minutes, which suggests pixel or scan time. That reading is an inference.
-- **MODIS version strings.** `6.2` appears in country files for 2000–2017, `6.03` for 2018–2022 and `61.03` for 2023–2025. They are undocumented. One reading is collection plus location-file version, which would make the 2000–2022 country files Collection 6. Given the 0.001% difference between Collections 6 and 6.1, this has little practical effect.
+- **Meaning of `acq_time`.** NASA defines it only as the "time of acquisition/overpass of the satellite (in UTC)". It is in whole minutes, so the precision is one minute. In the team's rows 18–24% of the minute values are multiples of 5, close to the 20% expected by chance. If it were the granule start time, every MODIS value would be a multiple of 5 and every VIIRS value a multiple of 6. It therefore appears to be the time of the pixel (or of its scan), not of the scene. That reading is an inference. Source: [w03-data-availability.md](harmonization-tests-research/w03-data-availability.md), section 4.
+- **The day and night label.** In the team's data the delivered `daynight` equals "night when the solar zenith angle (the angle of the sun from the vertical) exceeds 85 degrees" for every one of 737,244 rows, standard and near-real-time, on all five sensors. No near-real-time row lies where the documented near-real-time rule (orbit direction) would give a different label, and the file has no orbit-direction field, so the two rules cannot yet be told apart. Source: [a06-daynight-rule.md](harmonization-tests-research/a06-daynight-rule.md).
+- **MODIS version strings.** `6.2` appears in the team's standard rows for 2000–2017, `6.03` for 2018–2022 and `61.03` from 2023 (the last standard row is 29 August 2026). The team's files confirm this pattern; the strings remain undocumented. One reading is collection plus location-file version, which would make the 2000–2022 country files Collection 6. Given the 0.001% difference between Collections 6 and 6.1, this has little practical effect.
 - **Documentation lag.** The FIRMS attributes page still lists VIIRS versions as `1.0NRT` and `1.0`. Current files carry the Collection 2 strings above.
 
 ### Near-real-time and standard data
@@ -432,10 +436,10 @@ Sources: [FIRMS attributes page](https://www.earthdata.nasa.gov/data/tools/firms
 | Geolocation | Predicted orbit data; usually within 100 m of final | Final orbit data |
 | Gaps | Processing interruptions can leave gaps | Missing granules are filled; data degraded by maneuvers are removed |
 | `type` column | Absent | Present |
-| `daynight` rule | Orbit direction: ascending is day, descending is night | Solar zenith angle: above 85° is night |
+| `daynight` rule | Documented as orbit direction: ascending is day, descending is night. The team's near-real-time rows match the solar zenith rule instead, but none falls where the rules differ. | Solar zenith angle: above 85° is night |
 | API source names | `MODIS_NRT`, `VIIRS_SNPP_NRT`, `VIIRS_NOAA20_NRT`, `VIIRS_NOAA21_NRT` | `MODIS_SP`, `VIIRS_SNPP_SP`, `VIIRS_NOAA20_SP`, `VIIRS_NOAA21_SP` |
 
-- **Lag.** Standard data replace near-real-time data after "approximately a 5 month lag" according to the archive download page, 2–3 months according to the FAQ, and about 2 months according to the LANCE product pages. A June 2025 API example showed standard data ending 4–5 months before the query date. The most recent months of any download are therefore near-real-time rows.
+- **Lag.** Standard data replace near-real-time data after "approximately a 5 month lag" according to the archive download page, 2–3 months according to the FAQ, and about 2 months according to the LANCE product pages. A June 2025 API example showed standard data ending 4–5 months before the query date. In the team's data on 14 November 2026, the last standard rows ended on 29 August 2026 for MODIS and 31 July 2026 for VIIRS, a lag of about two and a half months (77 days) and about three and a half months (106 days). The most recent months of any download are therefore near-real-time rows.
 - **Faster streams.** Real-time (`RT`) and ultra-real-time (`URT`) rows come from direct-broadcast stations and cover the United States and Canada only. They are removed once the matching near-real-time rows arrive or after 6 hours. They appear inside the `_NRT` API sources, so a recent query over Canada can include them.
 - **NASA's advice.** The MODIS guide says near-real-time locations "should not be used for time series analyses or long-term studies". The VIIRS guide says scientific studies "should favor" the standard data.
 - **Count differences.** No source quantifies how much near-real-time and standard counts differ.
@@ -449,7 +453,7 @@ Sources: [FIRMS attributes page](https://www.earthdata.nasa.gov/data/tools/firms
 | VIIRS NOAA-20 | 1 Apr 2018 – present | 2018–2025, prefix `viirs-jpss1` | `VIIRS_NOAA20_SP` |
 | VIIRS NOAA-21 | 1 Mar 2023 – present (archive page) | None | `VIIRS_NOAA21_SP` |
 
-- **NOAA-20 country files exist.** They are published under the prefix `viirs-jpss1`, for example `https://firms.modaps.eosdis.nasa.gov/data/country/viirs-jpss1/2023/viirs-jpss1_2023_Canada.csv` (138 MB). This was checked on 2026-11-13 with header-only requests and against the [country file index](https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt). It corrects the note in [challenge.md](challenge.md) that NOAA-20 country paths return 404; the path tried there used a different prefix.
+- **NOAA-20 country files exist.** They are published under the prefix `viirs-jpss1`, for example `https://firms.modaps.eosdis.nasa.gov/data/country/viirs-jpss1/2023/viirs-jpss1_2023_Canada.csv` (138 MB). This was checked on 2026-11-13 with header-only requests and against the [country file index](https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt). It corrects the note in [challenge.md](challenge.md) that NOAA-20 country paths return 404; the path tried there used a different prefix. That note was corrected in place on 2026-11-14.
 - **NOAA-21 has no country files.** The index contains none, and the `viirs-jpss2` path returns 404.
 - **2026 is not published yet.** The 2025 files were last updated on 10 October 2026.
 - **Country files carry standard data.** Sampled rows have standard version strings and a `type` column.
@@ -480,7 +484,7 @@ Sources: [FIRMS attributes page](https://www.earthdata.nasa.gov/data/tools/firms
 
 ## Outages and gaps
 
-Detail: [outages-gaps.md](sensor-research/outages-gaps.md). All dates are UTC. The table lists every gap of about a day or longer that was found. Shorter partial-day losses are in the detail file.
+Detail: [outages-gaps.md](sensor-research/outages-gaps.md). All dates are UTC. The table lists the gaps of about a day or longer that were found in notices, and the gaps that NASA's granule catalogue showed on 2026-11-14 (see the notes below the table). Shorter partial-day losses are in the detail file. A gap in the catalogue is a run of days with no scenes over the team's box; dates there are UTC days.
 
 | Sensor | Dates | Length | Cause | Listed by FIRMS as missing |
 |---|---|---|---|---|
@@ -492,11 +496,16 @@ Detail: [outages-gaps.md](sensor-research/outages-gaps.md). All dates are UTC. T
 | Terra MODIS | 18 – 24 Feb 2016 | about 6 days | Safe mode during a maneuver | No |
 | Terra MODIS | 15 – 17 Mar 2022 | about 2 days degraded | Radiation upset; later reprocessed | No |
 | Terra MODIS | 10 – 21 Oct 2022 | about 10–13 days | Constellation exit burns | Not known |
-| Terra MODIS | 26 – 27 Mar 2026 | about 23.5 hours | Command load expired | Not known |
+| Terra MODIS | 13 – 15 May 2025 | 3 days with no scenes over the box | Not found | Not known |
+| Terra MODIS | 5 – 10 Mar 2026 | 6 days with no scenes over the box | Not found | Not known |
+| Terra MODIS | 26 – 27 Mar 2026 | about 23.5 hours flagged questionable; scenes exist on both days | Command load expired | Not known |
 | Aqua MODIS | 16 Aug – 2 Sep 2020 | about 17 days, sparse coverage only | Data formatter failure | Not known |
 | Aqua MODIS | 22 Feb – 23 Mar 2022 | Loss not stated | Formatter and recorder anomaly | Not known |
 | Aqua MODIS | 31 Mar – 16 Apr 2022 | about 17 days | Spacecraft safe mode | Not known |
-| Suomi NPP VIIRS | 26 Jul – 20 Aug 2022 | about 25 days | Spacecraft safe mode; not recoverable | Not known |
+| Suomi NPP VIIRS | 27 Jul – 10 Aug 2022 | about 15 days with no scenes over the box | Spacecraft safe mode; not recoverable | Not known |
+| Suomi NPP VIIRS | 30 May – 3 Jun 2024 | 5 days with no scenes over the box | GPS anomaly that began 25 May 2024; NASA says gaps may persist to 5 June | Not known |
+| Suomi NPP VIIRS | 10 – 15 Jul 2024 | 6 days with no scenes over the box | GPS anomaly; NASA gives the gap as 21:42 UTC 9 Jul to 17:42 UTC 16 Jul, unrecoverable | Not known |
+| Suomi NPP VIIRS | 24 – 28 Jul 2024 | 5 days with no scenes over the box | Spacecraft command data processor reset at 05:28 UTC on 24 Jul; data not recoverable | Not known |
 | Suomi NPP VIIRS | 2 – 6 Nov 2024 | about 3.9 days | GPS anomaly | Not known |
 | Suomi NPP VIIRS | 3 – 8 Jul 2025 | Partial | Wildfire near the Fairbanks ground station | Not known |
 | Suomi NPP VIIRS | 9 – 13 Mar 2026 | about 3.6 days | Geolocation errors | Not known |
@@ -512,9 +521,16 @@ Detail: [outages-gaps.md](sensor-research/outages-gaps.md). All dates are UTC. T
 | NOAA-21 VIIRS | 22 Jun 2024 | about 5 hours | Spacecraft safe mode | Not known |
 | NOAA-21 VIIRS | 1 Oct 2025 | Unknown; end not found | Instrument safe mode | Not known |
 | NOAA-21 VIIRS | 29 Jul 2026 | 96 minutes | Thermal band anomaly | Not known |
+| NOAA-21 VIIRS | 10 – 14 Jan 2026 | 5 days with no scenes over the box | Not found | Not known |
 | NOAA-20 and NOAA-21 | 27 Oct 2026 | Unknown | Raw data gaps | Not known |
 | NOAA-20 and NOAA-21 | 5 – 7 Nov 2026 | Unknown; still open on 13 Nov | Not stated | Not known |
 
+- **How the new dates were checked.** NASA's open granule catalogue (the Common Metadata Repository) lists every MODIS and VIIRS scene over an area, including scenes in which no fire was found. The team fetched the scenes over its box for all five sensors (124,636 in all) and used them to check this table against the day-by-day scene counts and the team's FIRMS rows. The catalogue has two limits. It shows a missing day or night pass as a half-day loss, but it cannot see a loss inside a scene: the Aqua failure of 16 August to 2 September 2020 still shows 3 to 5 scenes a day after the first day (1 on 16 August). It also keeps near-real-time scenes for only about seven days, so the current month may have no scene record; NOAA-20 near-real-time scenes exist only from 7 November 2026. It covers standard-quality scenes, and it lacks 4 and 5 August 2026 for Suomi NPP, although FIRMS has 2,937 near-real-time hotspots on those days. Sources: [w03-data-availability.md](harmonization-tests-research/w03-data-availability.md); the catalogue files and hotspot table were re-read on 2026-11-14.
+- **Causes of the added gaps.** The 2024 Suomi NPP causes are from NASA Earthdata alerts: [geolocation anomaly, May 2024](https://www.earthdata.nasa.gov/data/alerts-outages/suomi-npp-viirs-data-product-geolocation-anomaly-may-2024), [geolocation anomaly, July 2024](https://www.earthdata.nasa.gov/data/alerts-outages/suomi-npp-viirs-data-product-geolocation-anomaly-july-2024), [data product anomaly, July 2024](https://www.earthdata.nasa.gov/data/alerts-outages/suomi-npp-viirs-data-product-anomaly-july-2024) and [NOAA OSPO message of 24 July 2024](https://ospo.noaa.gov/data/messages/2024/07/MSG_20240724_2050.html). The Earthdata page for the 24 July event does not state a cause; the NOAA message does. For Terra on 13–15 May 2025 and 5–10 March 2026, and for NOAA-21 on 10–14 January 2026, a NASA or NOAA notice was searched for and none that explains the dates was found.
+- **Where the catalogue and the table differ.** In the catalogue Terra has 4 scenes over the box on 15 April 2001, the day the FIRMS FAQ lists as having no data, and none on 15 April 2002. Terra's gap of February 2016 runs to 27 February (listed to 24 February) and its gap of October 2022 runs 11–23 October (listed 10–21 October). NOAA-21 has no scenes on 10–14 January 2026, yet FIRMS has 8 hotspots on 14 January. Suomi NPP's listed gap of 2–6 November 2024 has scenes on 2, 3 and 6 November and none only on 4 and 5 November, although FIRMS has no hotspots in the box on 1–5 November. These differences are not resolved. Sources: the catalogue files and hotspot table, re-read on 2026-11-14; [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md), "Listed gaps the catalogue contradicts".
+- **Other catalogue gaps not in the table.** The catalogue also shows no scenes over the box for Aqua on 30 July – 7 August 2002 (the detail file mentions a safe hold on 29 July 2002 without a loss window), Terra on 10–12 February 2003, 2–5 October 2003, 11–14 October 2003 and 20–22 December 2008, and shorter gaps of one or two days. Those since 2012 are Suomi NPP on 25 March 2012, 26 July 2023 and 26 September 2024, NOAA-20 on 30 September 2023, and NOAA-21 on 27–28 February 2024. Their causes were not searched, so they are not entered above. Source: [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md), Part 1; the UTC dates were checked in the catalogue files.
+- **A loss inside scenes.** NOAA-20 recorded no hotspots in the box on 19–22 July 2023, against Suomi NPP's 34, 141, 360 and 597, although its scenes were normal (4 to 6 a day). The catalogue cannot show such a loss; a check of daily counts against the other VIIRS satellites found it. Its cause was not searched. Source: [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md), "Partial-loss count check".
+- **NOAA-20 in its first weeks.** The catalogue lists only 14 NOAA-20 scenes over the box between 1 April and 4 June 2018, although FIRMS has NOAA-20 rows from 1 April 2018 (406 against Suomi NPP's 434 in that period). From 5 June 2018 the scenes are complete. Source: [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md), Part 1; catalogue counts re-read on 2026-11-14.
 - **The FIRMS list is incomplete.** The FAQ names only the three early Terra gaps. The FIRMS missing-data table it links to could not be read during this research, so it is not known which later events FIRMS counts as missing.
 - **Suomi NPP's last year.** Its 2026 record has five separate multi-day gaps before the end in November.
 - **More small gaps since July 2023.** Terra and Aqua moved to reduced-staffing operations on 7 July 2023 and no longer replay recorded data to fill gaps, so partial-day gaps are more frequent.
@@ -601,9 +617,9 @@ The cross-check found these places where primary sources disagree. Detail and th
 
 | Item | Values found | Value used here | Why |
 |---|---|---|---|
-| NOAA-21 start in FIRMS | 1 Mar 2023 (archive download page); 17 Jan 2024 (FAQ) | Unresolved | Both pages said this on 13 Nov 2026. The likely reading, unconfirmed, is that near-real-time data start in January 2024 and the archive was later back-filled with standard data. The `version` column of 2023 rows would show which. |
+| NOAA-21 start in FIRMS | 1 Mar 2023 (archive download page); 17 Jan 2024 (FAQ) | 1 Mar 2023 for the archive | Resolved on 2026-11-14. The team's NOAA-21 rows for 2023 carry the standard version string `2`, and the first begins on 2 Mar 2023 (the first in the team's box; the box cannot show whether 1 Mar had data elsewhere). The archive start is therefore right. The January 2024 date is then best read as the near-real-time start; the team's data hold no near-real-time rows from that period to test this. |
 | Suomi NPP end | 13:00 UTC and 15:40 UTC on 2 Nov 2026 | 15:40 UTC | 13:00 was the planned time; 15:40 is reported after the event. |
-| Lag before standard data replace near-real-time | About 2 months; 2–3 months; about 5 months | Up to about 5 months | The archive download page, where the replacement happens, says 5. |
+| Lag before standard data replace near-real-time | About 2 months; 2–3 months; about 5 months | About 2.5 months for MODIS and 3.5 months for VIIRS | Measured on 14 Nov 2026: the team's standard rows ended on 29 Aug 2026 for MODIS and 31 Jul 2026 for VIIRS. The archive page's 5 months was not seen. One day of one query; the lag may vary from month to month. |
 | NOAA-20 and NOAA-21 crossing time | About 12:40 (FIRMS FAQ); 13:25 (NOAA operations); 13:30 (programme name) | 13:25–13:30 | The FAQ figure confuses the along-orbit offset with local time. |
 | VIIRS altitude | 824, 829, 830, 833, 840 km | 833 km operational, 824 km design | Different altitude definitions. |
 | VIIRS swath | 3000, 3040, 3060 km | About 3060 km | The others are rounded. |
@@ -615,23 +631,44 @@ The cross-check found these places where primary sources disagree. Detail and th
 | VIIRS I4 saturation | 353 K, about 358 K, 367 K | 367 K in the data | Specification, onset of saturation, and the value assigned to saturated pixels. |
 | VIIRS version strings | `1.0NRT`, `1.0` (attributes page); `2.0NRT`, `2` (files) | The file values | The page is out of date. |
 | MODIS satellite code | `T`, `A` (documentation); `Terra`, `Aqua` (files) | The file values | Observed in FIRMS files. |
-| MODIS standard version string | `6.1` (documentation); `6.2`, `6.03`, `61.03` (files) | Unresolved | Undocumented. |
+| MODIS standard version string | `6.1` (documentation); `6.2`, `6.03`, `61.03` (files) | The file values | The team's files show `6.2` through 2017, `6.03` for 2018–2022 and `61.03` from 2023, confirming the pattern. Its meaning remains undocumented. |
 | Night-time ratio of 375 m to 750 m detections | 25, 20 and 17 times | 17 times | The Collection 2 figure; the others are earlier versions. |
 
 ## What could not be established
 
 - A table of observations per day by latitude for each sensor combination. Only anchor points are published.
-- A measured history of Terra and Aqua crossing time and altitude for 2020–2026. Only plots and computed snapshots exist.
+- A measured history of Terra and Aqua crossing time and altitude for 2020–2026. Only plots and computed snapshots exist. The team's hotspot times give a yearly median local solar time for 2012–2026 (see [Terra and Aqua orbit drift](#terra-and-aqua-orbit-drift)), but not the crossing time or the altitude.
 - The size of the effect of orbit drift on MODIS fire counts. NASA describes it as under investigation.
-- Whether NOAA-21 rows for March 2023 to January 2024 in the FIRMS archive are standard data.
 - Whether VIIRS fire radiative power for 2012–2015 in the Collection 2 archive uses M13.
 - Brightness-temperature offsets between the three VIIRS units for I4 and I5, and whether NASA's fire code is identical across them.
 - Which input version feeds the MODIS fire product after 30 September 2026, and whether a Collection 7 fire product will replace Collection 6.1.
 - Firm end dates for Terra and Aqua data, and for MODIS in FIRMS.
 - How much near-real-time and standard counts differ.
+- Which rule the near-real-time stream really uses for `daynight`. The team's near-real-time rows contain no case where the orbit-direction and sun-angle rules differ.
 - Which outages FIRMS counts as missing data, beyond the three early Terra gaps.
+- The causes of Terra's gaps of 13–15 May 2025 and 5–10 March 2026 and of NOAA-21's gap of 10–14 January 2026.
 - How the VIIRS `type` values for volcanoes and static sources are assigned.
 - The lengths of several outages (listed as unknown in [Outages and gaps](#outages-and-gaps)).
+
+## Changes since first compiled
+
+Corrections made on 2026-11-14. Each statement was changed in place. Sources are working files in [harmonization-tests-research/](harmonization-tests-research/), the team's data, or pages opened that day.
+
+| Date | Section | Correction | Source |
+|---|---|---|---|
+| 2026-11-14 | Outages and gaps | Suomi NPP gap of 26 July – 20 August 2022 corrected to 27 July – 10 August 2022. Scenes exist, and FIRMS has hotspots, on 11–20 August 2022. | Granule catalogue and hotspot table; [w03-data-availability.md](harmonization-tests-research/w03-data-availability.md) |
+| 2026-11-14 | Outages and gaps | Terra 26–27 March 2026: scenes exist on both days. The data were flagged questionable, not missing. | Same; LAADS wording as recorded in [outages-gaps.md](sensor-research/outages-gaps.md) |
+| 2026-11-14 | Outages and gaps | Added Suomi NPP 30 May – 3 June, 10–15 July and 24–28 July 2024; Terra 13–15 May 2025 and 5–10 March 2026; NOAA-21 10–14 January 2026. Causes for the three 2024 events from NASA and NOAA notices; none found for the others. | Granule catalogue; NASA Earthdata alerts and NOAA OSPO message linked in that section |
+| 2026-11-14 | Outages and gaps | Added the notes on the granule catalogue, its two limits, and where it differs from the table. | [w03-data-availability.md](harmonization-tests-research/w03-data-availability.md); catalogue |
+| 2026-11-14 | Disagreements between sources; Which sensors were flying when | NOAA-21 start: the archive page's 1 March 2023 is supported (team's standard rows begin 2 March 2023). Moved out of the unresolved items. | Team's hotspot table |
+| 2026-11-14 | Disagreements between sources; FIRMS data; At a glance | Lag before standard data replace near-real-time data: about 2.5 months for MODIS and 3.5 months for VIIRS on 14 November 2026. | Team's hotspot table |
+| 2026-11-14 | FIRMS data; Disagreements between sources | MODIS standard version strings `6.2`, `6.03`, `61.03` confirmed by the team's files; meaning still undocumented. | Team's hotspot table |
+| 2026-11-14 | FIRMS data; At a glance | `daynight`: the delivered label equals the 85-degree sun-angle rule for all rows, near-real-time included. The documented orbit-direction rule for near-real-time rows is not contradicted or confirmed. | [a06-daynight-rule.md](harmonization-tests-research/a06-daynight-rule.md) |
+| 2026-11-14 | FIRMS data | `acq_time` is in whole minutes and appears to be the time of the pixel, not of the scene. | [w03-data-availability.md](harmonization-tests-research/w03-data-availability.md) |
+| 2026-11-14 | Satellites and orbits | Added the measured shift of Terra and Aqua daytime hotspot times beside the computed crossing times. | [a09-drift-curve.md](harmonization-tests-research/a09-drift-curve.md) |
+| 2026-11-14 | Outages and gaps | Catalogue limit reworded: it shows half-day losses (a missing day or night pass) but not a loss inside a scene. | [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md) |
+| 2026-11-14 | Outages and gaps | Added the catalogue's view of Suomi NPP 2–6 November 2024 (no scenes only on 4–5 November), the one-day gaps since 2012, the NOAA-20 loss inside scenes on 19–22 July 2023, and the sparse NOAA-20 scenes of April to early June 2018. | [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md); catalogue files |
+| 2026-11-14 | FIRMS data | Confirmed, unchanged: NOAA-20 yearly country files exist under the prefix `viirs-jpss1`. | Existing text and [country file index](https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt) |
 
 ## Principal sources
 
