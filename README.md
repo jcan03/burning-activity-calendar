@@ -89,6 +89,6 @@ The tests need the database from step 5 (and the terrain from step 6 for the ter
 - `animations.py`: the Map tab's period timeline, timelapse map and 3D columns that rise and fall through a period
 - `harmonize.py`: interim MODIS and VIIRS harmonization, to be replaced by the team's final method
 - `test_app.py`: behaviour tests for the calendar numbers, the animations, the terrain and the app
-- `.streamlit/config.toml`: light theme and no usage statistics
+- `.streamlit/config.toml`: dark theme and no usage statistics
 - `docs/`: challenge reference, sensor reference, harmonization documents and their research files (see [Documentation](#documentation))
 - `data/`: local FIRMS downloads (gitignored except `data/.gitkeep`). The analysis files behind the harmonization evidence and tests (scripts, result tables, catalogue downloads) are kept under `data/harmonization-analysis/` on the machine that ran them and are not in the repository.
