@@ -154,6 +154,7 @@ These need no MAP_KEY and no Earthdata login.
 
 - MODIS: `https://firms.modaps.eosdis.nasa.gov/data/country/modis/{YEAR}/modis_{YEAR}_Canada.csv`
 - VIIRS S-NPP: `https://firms.modaps.eosdis.nasa.gov/data/country/viirs-snpp/{YEAR}/viirs-snpp_{YEAR}_Canada.csv`
+- VIIRS NOAA-20 (2018–2025): `https://firms.modaps.eosdis.nasa.gov/data/country/viirs-jpss1/{YEAR}/viirs-jpss1_{YEAR}_Canada.csv`
 
 Confirmed sizes (bytes): MODIS Canada 2023 = 26,472,607; 2024 = 12,052,143; 2025 = 12,749,281. MODIS Canada 2000 and 2001 were also probed. VIIRS S-NPP Canada 2023 = 140,649,416. The same notes point at VIIRS S-NPP Canada 2024 and 2025 when those files are present. MODIS collection coverage on the download page starts 1 November 2000.
 
@@ -163,7 +164,7 @@ MODIS 2023 Canada header:
 latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight,type
 ```
 
-NOAA-20 and NOAA-21 yearly country paths tried in that session returned 404. That matches a third-party note, cited in the same check, that only MODIS and VIIRS S-NPP have open per-country archives. For NOAA-20/21 continuity, use the Area API (MAP_KEY, 5-day pages) or a custom request in the Archive Download UI.
+**Corrected 2026-11-14.** This section first said that NOAA-20 and NOAA-21 yearly country paths returned 404 and that only MODIS and VIIRS S-NPP have open per-country archives. NOAA-20 files do exist, for 2018 to 2025, under the prefix `viirs-jpss1`; the path tried earlier used a different prefix. For example, `data/country/viirs-jpss1/2023/viirs-jpss1_2023_Canada.csv` is 138,176,145 bytes. NOAA-21 has no country files. Sources: the [country file index](https://firms.modaps.eosdis.nasa.gov/data/country/yearly_summary_files.txt) and a header-only request, both on 2026-11-14; [sensor-reference.md](sensor-reference.md), "FIRMS data". For NOAA-21, use the Area API (MAP_KEY, 5-day pages) or a custom request in the Archive Download UI.
 
 ### Archive coverage
 
