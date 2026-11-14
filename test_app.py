@@ -47,12 +47,13 @@ class WithData(unittest.TestCase):
 class Harmonize(WithData):
     def test_filters_keep_the_documented_rows(self):
         con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
-        raw = pd.read_sql_query("SELECT latitude, longitude, instrument, confidence, type FROM hotspots", con)
+        raw = pd.read_sql_query("SELECT latitude, longitude, acq_date, instrument, confidence, type FROM hotspots", con)
         con.close()
         low = np.where(raw.instrument == "MODIS", pd.to_numeric(raw.confidence, errors="coerce") < 30, raw.confidence == "l")
         lat, lon, lat0, lon0 = (np.radians(v) for v in (raw.latitude, raw.longitude, *h.STATIC_SITE))
         km = 2 * 6371 * np.arcsin(np.sqrt(np.sin((lat - lat0) / 2) ** 2 + np.cos(lat0) * np.cos(lat) * np.sin((lon - lon0) / 2) ** 2))
-        self.assertEqual(len(self.rows), int((~raw.type.isin([1, 2]) & ~low & (km > 0.4)).sum()))
+        kept = ~raw.type.isin([1, 2]) & ~low & (km > 0.4) & (raw.acq_date < raw.acq_date.max())
+        self.assertEqual(len(self.rows), int(kept.sum()))
 
     def test_monthly_counts_match_plain_sql(self):
         south, west, north, east = OKANAGAN
@@ -111,6 +112,29 @@ class Harmonize(WithData):
         self.assertTrue((small.count_viirs <= whole.count_viirs).all() and (small.count_modis <= whole.count_modis).all())
         self.assertEqual(h.daily(self.rows, EMPTY)[["count_modis", "count_viirs"]].to_numpy().sum(), 0)
 
+    def test_a_month_too_tied_to_place_gets_no_rank(self):
+        c = h.calendar_table(h.monthly_rates(h.daily(self.rows, OKANAGAN)), self.k)
+        self.assertTrue(c.uncertain.any())
+        self.assertTrue(c[c.uncertain][["rank", "cls"]].isna().all().all())
+
+    def test_off_season_months_are_ranked_against_viirs_months_only(self):
+        january = self.calendar.loc["2020-01"]      # January 2012 still came from MODIS, so the baseline starts in 2013
+        self.assertEqual((january.since, january.n_years), (2013, 13))
+        november = self.calendar.loc["2020-11"]
+        self.assertEqual((november.since, november.n_years), (2012, 14))
+        self.assertEqual(self.calendar.loc["2020-07", "since"], 2001)
+
+    def test_outage_days_do_not_count_as_flying(self):
+        self.assertEqual(self.daily.loc["2026-07-12", "sats_viirs"], 2)     # Suomi NPP out; NOAA-20 and NOAA-21 flying
+        self.assertEqual(self.daily.loc["2001-06-20", "sats_modis"], 0)     # Terra, then the only satellite, was out
+        self.assertEqual(self.daily.loc["2022-10-15", "sats_modis"], 1)
+
+    def test_the_day_of_the_download_is_left_out(self):
+        con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
+        last = con.execute("SELECT MAX(acq_date) FROM hotspots").fetchone()[0]
+        con.close()
+        self.assertEqual(self.end, T(last) - pd.Timedelta(days=1))
+
 
 class Animations(WithData):
     def test_steps_put_every_day_in_one_frame_in_order(self):
@@ -120,6 +144,8 @@ class Animations(WithData):
             frame, labels = animations.steps(days, T(start), T(stop))
             self.assertEqual((frame.min(), frame.max(), frame.nunique()), (0, len(labels) - 1, len(labels)), msg=f"{start} to {stop}")
             self.assertTrue(frame.is_monotonic_increasing)
+        days = pd.Series(pd.date_range("2023-01-01", "2023-09-06"))        # 2-day frames, with one day left over
+        self.assertEqual(animations.steps(days, T("2023-01-01"), T("2023-09-06"))[1][-2:], ["04 Sep to 05 Sep 2023", "06 Sep 2023"])
 
     def test_a_long_period_plays_month_by_month(self):
         days = pd.Series(pd.date_range(FIRST, self.end))
@@ -155,7 +181,10 @@ class Animations(WithData):
     def test_3d_columns_stand_inside_the_area_on_the_ground(self):
         html, top, cell_km, stretch = animations.columns_3d(self.points, KAMLOOPS, FIRST, self.end, 2)
         d = {name: np.array(d) for name, d in page_data(html).items() if name in ("x0", "x1", "y0", "y1", "foot", "base")}
+        south, west, north, east = KAMLOOPS
+        wide, tall = (east - west) * 111.2 * np.cos(np.radians((south + north) / 2)), (north - south) * 111.2
         self.assertTrue((d["x0"] >= 0).all() and (d["y0"] >= 0).all() and (d["x1"] > d["x0"]).all() and (d["y1"] > d["y0"]).all())
+        self.assertTrue((d["x1"] <= wide + 0.01).all() and (d["y1"] <= tall + 0.01).all())
         self.assertTrue((d["foot"] <= d["base"] + 1e-9).all())
 
     def test_3d_squares_widen_when_there_are_too_many(self):
@@ -252,8 +281,19 @@ class App(unittest.TestCase):
         july = h.calendar_table(h.monthly_rates(h.daily(rows, h.BOX)), k).loc["2021-07"]
         metrics = {m.label: m.value for m in at.metric}
         self.assertEqual(metrics["Index"], f"{july['index']:,.0f}")
-        self.assertEqual(metrics["Rank among Julys"], f"{july['rank']:.0f} of {july.n_years:.0f}")
+        self.assertEqual(metrics["Rank for July"], f"{july['rank']:.0f} of {july.n_years:.0f}")
         self.assertIn("busiest July on record", at.markdown[0].value)
+
+    def test_a_month_that_cannot_be_ranked_shows_no_rank(self):
+        at = self.choose(self.run_app(), year=2012, month=1, area="Okanagan Valley")
+        self.assertIn("cannot be ranked", at.markdown[0].value)
+        self.assertEqual({m.label: m.value for m in at.metric}["Rank for January"], "-")
+
+    def test_a_quick_pick_outside_the_record_is_switched_off(self):
+        at = self.choose(self.run_app(), year=2000, month=3)
+        disabled = {b.label: b.disabled for b in at.button}
+        self.assertTrue(disabled["June to September 2000"] and disabled["March 2000"])
+        self.assertFalse(disabled["All of 2000"] or disabled["Whole record"])
 
     def test_a_month_outside_the_record_says_so(self):
         at = self.choose(self.run_app(), year=2000, month=3)

@@ -51,9 +51,8 @@ def steps(day, start, stop, most=125):
     days = (stop - start).days + 1
     for n in (1, 2, 3, 7, 14):
         if days <= most * n:
-            firsts = [start + pd.Timedelta(days=i * n) for i in range(-(-days // n))]
-            labels = [f"{a:%d %b %Y}" if n == 1 else f"{a:%d %b} to {min(a + pd.Timedelta(days=n - 1), stop):%d %b %Y}"
-                      for a in firsts]
+            spans = [(a, min(a + pd.Timedelta(days=n - 1), stop)) for a in (start + pd.Timedelta(days=i * n) for i in range(-(-days // n)))]
+            labels = [f"{a:%d %b %Y}" if a == b else f"{a:%d %b} to {b:%d %b %Y}" for a, b in spans]
             return (day - start).dt.days // n, labels
     months = pd.period_range(start, stop, freq="M")
     return (day.dt.year - start.year) * 12 + day.dt.month - start.month, [m.strftime("%B %Y") for m in months]
@@ -189,11 +188,15 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     tallest = 0.25 * max(wide, tall)                         # km on screen for the busiest square
     heights = (np.sqrt(grid / top) * tallest).round(2).to_numpy()
     # Each column's footprint: its square, cut off at the area's edge, less a sliver so neighbours stay apart.
-    left, low = (grid.index.get_level_values(name).to_numpy() * cell_km for name in ("col", "row"))
-    gap = 0.04 * cell_km
-    x0, x1 = left + gap, np.maximum(np.minimum(left + cell_km, wide) - gap, left + 2 * gap)
-    y0, y1 = low + gap, np.maximum(np.minimum(low + cell_km, tall) - gap, low + 2 * gap)
-    cx, cy = ((x0 + x1) / 2).clip(0, wide), ((y0 + y1) / 2).clip(0, tall)
+    def edges(name, size):
+        """Where the columns start and stop along one side of the area."""
+        low = grid.index.get_level_values(name).to_numpy() * cell_km
+        high = np.minimum(low + cell_km, size)
+        low = np.minimum(low, np.maximum(high - 0.2 * cell_km, 0))   # a square cut off by the edge keeps some width
+        return low + 0.04 * (high - low), high - 0.04 * (high - low)
+
+    (x0, x1), (y0, y1) = edges("col", wide), edges("row", tall)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
 
     # The ground: real elevation, stretched so the area's relief is RELIEF of its width. Flat if it is not downloaded.
     land = relief(bbox, GROUND_PIXELS)
@@ -211,7 +214,7 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
 
     # A column runs from the lowest ground under it, so it never hangs in the air, to its height above its centre.
     foot = np.array([ground[int(a * per_km_y):int(np.ceil(b * per_km_y)) + 1, int(c * per_km_x):int(np.ceil(d * per_km_x)) + 1].min()
-                     for a, b, c, d in zip(y0, np.minimum(y1, tall), x0, np.minimum(x1, wide))])
+                     for a, b, c, d in zip(y0, y1, x0, x1)])
     base = ground_at(cx, cy)
     # Before Play is pressed, show the busiest step (or the end, when adding up).
     shown = n - 1 if add_up else int(grid.sum(axis=0).to_numpy().argmax())
