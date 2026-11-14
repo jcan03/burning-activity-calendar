@@ -18,11 +18,19 @@ TERRAIN = Path(__file__).parent / "data" / "terrain.npz"   # elevation in metres
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 CLASSES = ["Much below normal", "Below normal", "Near normal", "Above normal", "Much above normal"]
-# Blue to red around a neutral grey; adjacent steps stay distinct with colour-blind vision.
-CLASS_COLORS = ["#1c5cab", "#86b6ef", "#d9d8d4", "#ee8a82", "#c5302c"]
-UNRANKED = "#a3a29d"
-BLUES = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
-VIIRS_COLOR, MODIS_COLOR, MUTED, INK = "#2a78d6", "#eb6834", "#8a8984", "#3b3b38"
+# One palette for the whole app, on a near-black page (.streamlit/config.toml sets the same page colour).
+# Each set was checked for colour-blind readers with the dataviz skill's validator.
+PAGE = "#0d0b0a"
+# Amount of burning: near-black for none, through deep red, orange and yellow, to near-white for the most.
+# The six colours fall close to 0, 10, 100, 1,000, 10,000 and the top of the calendar's scale, and each is clearly
+# brighter than the one before, so it reads in the right order without telling the colours apart.
+FIRE = ["#2a1814", "#8a1f10", "#d6470f", "#fb8c1e", "#ffd83d", "#fffbd6"]
+# Compared with normal: blue below and amber above a dark grey, brighter the further from normal.
+CLASS_COLORS = ["#6fb1ff", "#2f66a8", "#3a3a37", "#a85a14", "#ffb347"]
+UNRANKED = "#6b6a65"
+VIIRS_COLOR, MODIS_COLOR = "#199e70", "#9085e9"   # the two sensors: green and violet, clear of the fire colours
+ACCENT = "#f29a2e"                                # whatever is selected or in focus
+MUTED, INK = "#8a8984", "#ece8e1"                 # context; text and outlines
 CITIES = {"Kamloops": (50.6745, -120.3273), "Kelowna": (49.888, -119.496), "Vernon": (50.267, -119.272),
           "Penticton": (49.499, -119.594), "Merritt": (50.111, -120.786), "Salmon Arm": (50.700, -119.284),
           "Lillooet": (50.686, -121.936), "Williams Lake": (52.141, -122.141), "100 Mile House": (51.644, -121.295),
@@ -34,11 +42,11 @@ CITIES = {"Kamloops": (50.6745, -120.3273), "Kelowna": (49.888, -119.496), "Vern
 
 @lru_cache(maxsize=1)
 def _basemap():
-    """The terrain picture as a grey array, lightened so the data stands out. None if it is not downloaded."""
+    """The terrain picture as a grey array, darkened so the data stands out. None if it is not downloaded."""
     if not BASEMAP.exists():
         return None
     grey = np.asarray(Image.open(BASEMAP).convert("L"), dtype=float)
-    return (255 - (255 - grey) * 0.5).astype(np.uint8)
+    return (grey * 0.45).astype(np.uint8)
 
 
 def _crop(grid, bbox):
@@ -121,8 +129,12 @@ def _hover(t, r):
     return "<br>".join(lines + [f"<i>{n}</i>" for n in flags(r)])
 
 
-def calendar(c, view, selected, years):
-    """Year by month heatmap. view is 'class' or 'index'. Cells can be clicked (customdata = month)."""
+def calendar(c, view, selected, years, top=60000):
+    """Year by month heatmap. view is 'class' or 'index'. Cells can be clicked (customdata = month).
+
+    `top` is the index that gets the darkest colour: the same for every area, so areas can be compared,
+    unless a small region is given its own.
+    """
     c = c[(c.index.year >= years[0]) & (c.index.year <= years[1])]
     yrs = list(range(years[0], years[1] + 1))
     x, y = c.index.month, c.index.year
@@ -141,16 +153,16 @@ def calendar(c, view, selected, years):
             fig.add_scatter(x=[None], y=[None], mode="markers", name=name, marker=dict(symbol="square", size=12, color=col))
         s = c[c.record]
         fig.add_scatter(x=s.index.month, y=s.index.year, mode="markers", name="Record for that month", hoverinfo="skip",
-                        marker=dict(symbol="star", size=11, color="white", line=dict(color=INK, width=1)))
+                        marker=dict(symbol="star", size=11, color="white", line=dict(color=PAGE, width=1.5)))
     else:
-        ticks = [0, 10, 100, 1000, 10000]
-        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(60001),
-                        colorscale=[[i / 6, col] for i, col in enumerate(BLUES)], xgap=2, ygap=2, hoverinfo="skip",
+        ticks = [tick for tick in (0, 10, 100, 1000, 10000) if tick <= top]
+        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(top + 1),
+                        colorscale=[[i / (len(FIRE) - 1), col] for i, col in enumerate(FIRE)], xgap=2, ygap=2, hoverinfo="skip",
                         colorbar=dict(title="Index", tickvals=np.log10(np.array(ticks) + 1),
                                       ticktext=[f"{t:,}" for t in ticks], len=0.5, thickness=12))
     s = c[c.nrt]
     fig.add_scatter(x=s.index.month - 0.3, y=s.index.year - 0.28, mode="markers", name="Provisional data", hoverinfo="skip",
-                    marker=dict(symbol="circle", size=6, color="white", line=dict(color=INK, width=1)))
+                    marker=dict(symbol="circle", size=6, color="white", line=dict(color=PAGE, width=1)))
     if years[0] <= SPLICE.year <= years[1]:
         fig.add_scatter(x=[0.5, 1.5, 1.5, 12.5], y=[SPLICE.year + 0.5, SPLICE.year + 0.5, SPLICE.year - 0.5, SPLICE.year - 0.5],
                         mode="lines", name="Above this line: scaled from MODIS", hoverinfo="skip",
@@ -190,7 +202,7 @@ def month_history(c, t):
                         customdata=part["index"], hovertemplate="%{x}: %{customdata:,.0f}<extra></extra>")
     fig.add_scatter(x=[t.year], y=[r["index"] + 1], mode="markers+text", name=str(t.year), text=[str(t.year)],
                     textposition="top center", showlegend=False,
-                    marker=dict(size=13, color=VIIRS_COLOR, line=dict(width=2, color="white")),
+                    marker=dict(size=13, color=ACCENT, line=dict(width=2, color=PAGE)),
                     hovertemplate=f"{t.year}: {r['index']:,.0f}<extra></extra>")
     top = np.log10(max(s["index"].max(), r.high if not np.isnan(r.high) else 0) + 1)
     fig.update_yaxes(type="log", title="Index + 1 (log scale)", dtick=1, tickformat=",", range=[-0.1, top + 0.45])
@@ -220,7 +232,7 @@ def season(d, k, year):
     if year in cum:
         last = d.index.max()
         line = cum[year].where(days.dayofyear <= last.dayofyear) if year == last.year else cum[year]
-        fig.add_scatter(x=days, y=line, mode="lines", name=str(year), line=dict(color=VIIRS_COLOR, width=3),
+        fig.add_scatter(x=days, y=line, mode="lines", name=str(year), line=dict(color=ACCENT, width=3),
                         hovertemplate="%{x|%d %b}: %{y:,.0f}<extra>" + str(year) + "</extra>")
     fig.update_xaxes(tickformat="%b", dtick="M1")
     fig.update_yaxes(title="Hotspots per satellite, added up since 1 January", rangemode="tozero")
@@ -232,7 +244,7 @@ def season(d, k, year):
 def daily_bars(d, k, t):
     """Hotspots per satellite on each day of the month. Indicative only: days are not ranked."""
     v = daily_index(d, k).loc[str(t)]
-    fig = go.Figure(go.Bar(x=v.index, y=v.values, marker=dict(color=VIIRS_COLOR, cornerradius=3),
+    fig = go.Figure(go.Bar(x=v.index, y=v.values, marker=dict(color=ACCENT, cornerradius=3),
                            hovertemplate="%{x|%d %b %Y}: %{y:,.0f}<extra></extra>"))
     fig.update_yaxes(title="Hotspots per satellite", rangemode="tozero")
     fig.update_xaxes(tickformat="%d", dtick=86400000 * 2)
@@ -260,7 +272,7 @@ def map_frame(fig, bbox):
 
 
 def hotspot_map(points, bbox, title):
-    """Hotspot locations in the chosen area. Drag a box to zoom in to a smaller one."""
+    """Hotspot locations in the chosen area. It can be zoomed, and a region circled or a box dragged on it."""
     if len(points) > 20000:
         points = points.sample(20000, random_state=0)
     fig = go.Figure()
@@ -269,7 +281,8 @@ def hotspot_map(points, bbox, title):
         fig.add_scattergl(x=p.lon, y=p.lat, mode="markers", name=name, marker=dict(size=4, color=color, opacity=0.55),
                           hovertemplate="%{y:.3f}, %{x:.3f}<extra>" + name + "</extra>")
     map_frame(fig, bbox)
-    fig.update_layout(height=620, margin=dict(l=10, r=10, t=40, b=10), title=title, dragmode="select",
+    fig.update_layout(height=620, margin=dict(l=10, r=10, t=40, b=10), title=title, dragmode="lasso",
+                      uirevision=str(bbox),      # keep the zoom when the dots change, until the area does
                       legend=dict(orientation="h", y=-0.08, yanchor="top"))
     return fig
 
@@ -284,7 +297,7 @@ def sensor_check(c, k):
         fig.add_scatter(x=lim, y=[lim[0] * factor, lim[1] * factor], mode="lines", name=name, showlegend=name is not None,
                         line=dict(color=MUTED, width=1.5, dash=dash), hoverinfo="skip")
     fig.add_scatter(x=x, y=y, mode="markers", name="One month", text=o.index.strftime("%b %Y"),
-                    marker=dict(size=8, color=VIIRS_COLOR, opacity=0.7, line=dict(width=1, color="white")),
+                    marker=dict(size=8, color=ACCENT, opacity=0.7, line=dict(width=1, color=PAGE)),
                     hovertemplate="%{text}<br>from MODIS %{x:,.0f}, from VIIRS %{y:,.0f}<extra></extra>")
     fig.update_xaxes(type="log", title="Index from MODIS alone, + 1", range=np.log10(lim), dtick=1, tickformat=",")
     fig.update_yaxes(type="log", title="Index from VIIRS alone, + 1", range=np.log10(lim), dtick=1, tickformat=",")
@@ -302,7 +315,7 @@ def adding_satellites(c):
                         subplot_titles=["Every hotspot from every satellite, added up", "Harmonized index (per satellite)"])
     fig.add_bar(x=raw.index, y=raw.values, marker=dict(color=MUTED, cornerradius=3), row=1, col=1,
                 hovertemplate="%{x}: %{y:,.0f} hotspots<extra></extra>")
-    fig.add_bar(x=index.index, y=index.values, marker=dict(color=VIIRS_COLOR, cornerradius=3), row=2, col=1,
+    fig.add_bar(x=index.index, y=index.values, marker=dict(color=ACCENT, cornerradius=3), row=2, col=1,
                 hovertemplate="%{x}: %{y:,.0f}<extra></extra>")
     for year, label in [(2012, "1st VIIRS"), (2018, "2nd VIIRS"), (2023, "3rd VIIRS")]:
         fig.add_vline(x=year - 0.5, line=dict(color=INK, width=1, dash="dot"))

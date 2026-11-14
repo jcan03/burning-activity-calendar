@@ -139,6 +139,20 @@ class Harmonize(WithData):
         self.assertTrue((small.count_viirs <= whole.count_viirs).all() and (small.count_modis <= whole.count_modis).all())
         self.assertEqual(h.daily(self.rows, EMPTY)[["count_modis", "count_viirs"]].to_numpy().sum(), 0)
 
+    def test_a_circled_region_counts_only_what_is_inside(self):
+        # A five-sided outline with its corners in anticlockwise order: a point is inside if it is left of every side.
+        shape = [(-120.913, 50.3117), (-119.8731, 50.2771), (-119.7219, 50.9133), (-120.4127, 51.0619), (-121.0033, 50.7411)]
+        left = np.ones(len(self.rows), bool)
+        for (x0, y0), (x1, y1) in zip(shape, shape[1:] + shape[:1]):
+            left &= ((x1 - x0) * (self.rows.lat - y0) - (y1 - y0) * (self.rows.lon - x0) > 0).to_numpy()
+        inside = h.in_shape(self.rows, shape)
+        self.assertEqual(len(inside), int(left.sum()))
+        self.assertGreater(len(inside), 10000)
+        self.assertEqual(len(h.in_shape(self.rows, shape[::-1])), len(inside))       # drawn the other way round
+        counted = h.daily(self.rows, h.BOX, shape)
+        self.assertEqual(counted.count_modis.sum() + counted.count_viirs.sum(), len(inside))
+        self.assertEqual(len(counted), len(self.daily))                              # still the whole record
+
     def test_a_month_too_tied_to_place_gets_no_rank(self):
         c = h.calendar_table(h.monthly_rates(h.daily(self.rows, OKANAGAN)), self.k)
         self.assertTrue(c.uncertain.any())
@@ -182,6 +196,14 @@ class Animations(WithData):
         self.assertEqual(len(labels), len(pd.period_range(FIRST, self.end, freq="M")))
         self.assertEqual(labels[frame[days == T("2021-07-15")].iloc[0]], "July 2021")
 
+    def test_timeline_zooms_from_years_to_months(self):
+        index = h.daily_index(self.daily, self.k)
+        years = animations.timeline(index, FIRST, self.end).data[1]             # the layer that takes the click
+        self.assertEqual((years.customdata[0], years.customdata[-1]), ("2000-01 2000-12", f"{self.end.year}-01 {self.end.year}-12"))
+        for start, stop in [("2021-01-01", "2021-12-31"), ("2021-07-01", "2021-07-31")]:    # a month shown: the year stays up
+            months = animations.timeline(index, T(start), T(stop)).data[1]
+            self.assertEqual(list(months.customdata), [f"2021-{m:02d} 2021-{m:02d}" for m in range(1, 13)])
+
     def test_timelapse_counts_every_hotspot(self):
         for bbox, (start, stop) in [(KAMLOOPS, SUMMER_2021), (h.BOX, (FIRST, self.end)), (EMPTY, SUMMER_2021)]:
             fig = animations.timelapse(self.rows, bbox, start, stop)
@@ -215,6 +237,20 @@ class Animations(WithData):
         self.assertTrue((d["x0"] >= 0).all() and (d["y0"] >= 0).all() and (d["x1"] > d["x0"]).all() and (d["y1"] > d["y0"]).all())
         self.assertTrue((d["x1"] <= wide + 0.01).all() and (d["y1"] <= tall + 0.01).all())
         self.assertTrue((d["foot"] <= d["base"] + 1e-9).all())
+
+    def test_3d_burn_scars_last_twelve_months(self):
+        # The page's script outlines squares that burned in the last `keep` frames; it needs each square's grid place.
+        whole = page_data(animations.columns_3d(self.points, KAMLOOPS, FIRST, self.end, 2)[0])
+        self.assertEqual(whole["keep"], 12)                                   # monthly frames
+        summer = page_data(animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)[0])
+        self.assertEqual((len(summer["dates"]), summer["keep"]), (122, 365))   # daily frames: a scar outlasts the period
+        left = np.array(summer["col"]) * summer["cell"]
+        self.assertTrue((np.abs(left - np.array(summer["x0"])) < summer["cell"]).all())      # the scar's square is the column's
+        self.assertEqual(len(summer["ground"]) % summer["across"], 0)
+        # Only big patches are outlined: the script turns heights back into activity to add a patch up.
+        html, top, cell_km, stretch = animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)
+        self.assertEqual((summer["big"], summer["adds"]), (animations.SCAR, False))
+        self.assertAlmostEqual(summer["most"], top)      # the activity that the tallest height stands for
 
     def test_3d_squares_widen_when_there_are_too_many(self):
         html, top, cell_km, stretch = animations.columns_3d(self.points, h.BOX, FIRST, self.end, 2)
@@ -323,6 +359,22 @@ class App(unittest.TestCase):
         disabled = {b.label: b.disabled for b in at.button}
         self.assertTrue(disabled["June to September 2000"] and disabled["March 2000"])
         self.assertFalse(disabled["All of 2000"] or disabled["Whole record"])
+
+    def test_buttons_follow_the_year_the_timeline_is_zoomed_to(self):
+        at = self.run_app()
+        self.assertIn(f"All of {h.load_rows().day.max().year}", [b.label for b in at.button])   # the year in focus
+        at.select_slider(key="months").set_range(pd.Period("2021-03"), pd.Period("2021-05"))
+        at.run()
+        self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
+        self.assertIn("All of 2021", [b.label for b in at.button])
+
+    def test_a_circled_region_opens_its_calendar(self):
+        at = self.run_app()
+        at.session_state["region"] = ((-120.9, 50.3), (-119.9, 50.3), (-119.8, 50.9), (-120.9, 50.9))
+        at.session_state["open_region"] = True      # what circling a region on the map sets
+        at.run()
+        self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
+        self.assertTrue(any("km²" in m.value and "hotspots" in m.value for m in at.markdown))
 
     def test_a_month_outside_the_record_says_so(self):
         at = self.choose(self.run_app(), year=2000, month=3)
