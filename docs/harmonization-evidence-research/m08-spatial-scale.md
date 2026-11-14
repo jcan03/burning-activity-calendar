@@ -59,7 +59,7 @@ Further findings:
 - Anomaly medians are in-sample from the same 10 years. At 25 and 50 km, agreement is computed only on the months that survive the zero-median exclusion.
 - The busy-month test uses a threshold of 10 MODIS hotspots and has few months per circle below 100 km.
 - Fire radiative power and active-cell units were not tested.
-- The persistent Kamloops source was not identified, and other circles were not screened for such sources.
+- The persistent Kamloops source was not identified, and other circles were not screened for such sources. (The team later judged it likely to be the Kruger pulp mill at Mission Flats; see [harmonization-tests.md](../harmonization-tests.md#static-and-recurring-sources).)
 
 ## How it was computed
 

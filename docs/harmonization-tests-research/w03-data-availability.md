@@ -112,7 +112,7 @@ The nearest facility to 50.688°N, 120.408°W in Canada's National Pollutant Rel
 - The outage list understates Suomi NPP gaps during the 2024 fire season. Any month that used it as complete, such as July 2024, carries that error.
 - An independent, provisional check of the 2026 Terra decline is available now, not only in April 2027. Measured against area burned, Terra's daytime yield fell much further than NOAA-20's. The 2026 figures are operational, not final.
 - No published curve gives a local count-based daily fire cycle. Building one from GOES-West is feasible later, at a 60° view angle with pixels about 2.4 times nominal size.
-- The Kamloops static source can be described as lying 0.4 km from a registered pulp mill. That is proximity, not identification.
+- The Kamloops static source can be described as lying 0.4 km from a registered pulp mill. That is proximity, not identification. (The team later judged it likely to be that mill, from its position and its persistence in every year from 2012 to 2026; see [harmonization-tests.md](../harmonization-tests.md#static-and-recurring-sources). No source confirms it.)
 
 ## Limits
 

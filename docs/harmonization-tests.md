@@ -23,7 +23,7 @@ Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run
 9. **On the real 24-year baseline, about two in five fire-season labels in the box differ from a VIIRS-only baseline** (39%), against about one in five expected from the change of length alone. The excess pushes months lower, mainly in spring and autumn. The data cannot tell real pre-2012 burning from a conversion level about 1.6 times too high. On the stable years, a converted baseline of the real composition still gives the right class in 87% of fire-season months.
 10. **Only the 2026 loss in Terra's daytime count is established** (about half of normal). The gradual decline over 2022–2025 reported earlier is weak. BC's provisional 2026 fire records confirm the 2026 loss independently.
 11. **The delivered day and night label follows one rule for every row,** standard and near-real-time. No relabelling is needed now.
-12. **The Kamloops site is the only persistent fixed heat source in the box.** It makes up most of the VIIRS count near Kamloops in a quiet summer month.
+12. **The Kamloops site is the only persistent fixed heat source in the box.** It makes up most of the VIIRS count near Kamloops in a quiet summer month. It is likely the pulp mill at Mission Flats.
 13. **NASA's open granule catalogue gives a per-day availability flag for each satellite.** It sees whole-day and half-day losses but not losses inside a scene. It found outages missing from the outage list used so far, and four listed gaps that are wrong or too wide. With it, the daily mean of the VIIRS satellites stays level through every real outage month.
 14. **Changing satellite changes labels on its own.** A current month taken from NOAA-20 instead of Suomi NPP gets a different class in about one fire-season month in seven on the box (13.5%), and in 14–23% of 100 km circle-months, even with a perfect conversion.
 15. **Of the approaches borrowed from other fields, the useful ones are diagnostics and explanations, not converters.** None beat one factor at predicting counts.
@@ -186,7 +186,7 @@ Detail: [a12](harmonization-tests-research/a12-static-sources.md), [w03](harmoni
 
 - A second, independent search with a different grid found the same three sites and no others.
 - The Kamloops site is seasonal: 80% of its dates fall in June to September. In a quiet summer month it makes up 87% of the Suomi NPP count within 25 km and 69% within 50 km.
-- The nearest facility in Canada's national pollutant registry is a pulp mill 0.4 km away. That is proximity, not identification.
+- **The Kamloops site is likely the Kruger pulp mill at [2005 Mission Flats Road](https://pulp.kruger.com/contact-us).** The mill's location in Canada's national pollutant registry (50.6861°N, 120.4037°W) is 0.4 km from the source, about the width of one VIIRS pixel. The source has been detected in every year from 2012 to 2026. The only other registered facility nearby is a sawmill 0.76 km away that last reported in 2008, and OpenStreetMap places the point at "Gate 2, Mission Flats". This is the team's judgment from position and persistence. No source confirms it or names the part of the mill that would be emitting, the summer peak in its dates is unexplained, and only the pollutant registry was searched. Detail: [w03](harmonization-tests-research/w03-data-availability.md#6-the-fixed-heat-source).
 - November and spring burning is spread across valleys, not at fixed points. A persistence mask would remove real burning, which the challenge counts as burning activity.
 
 ## Follow-up tests
@@ -475,7 +475,7 @@ The follow-up tests answered three items listed here at first: a baseline of the
 
 ## Changes since first compiled
 
-Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests).
+Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests). The last row is a judgment made by the team on the same day, not a test result.
 
 | Date | Statement | First compilation | Now | Source |
 |---|---|---|---|---|
@@ -488,6 +488,7 @@ Each change was made in place above, on 2026-11-14, from the three follow-up tes
 | 2026-11-14 | "At a glance" | Thirteen points | Two points added, on the real-length baseline and on label changes from a change of satellite | [f01](harmonization-tests-research/f01-real-length-baseline.md), [f03](harmonization-tests-research/f03-availability-flag.md) |
 | 2026-11-14 | "What is still missing" | Ten items | The three answered items removed; items found missing by the follow-ups added | [f01](harmonization-tests-research/f01-real-length-baseline.md), [f02](harmonization-tests-research/f02-factor-refinements.md), [f03](harmonization-tests-research/f03-availability-flag.md) |
 | 2026-11-14 | Which designs remove the fire-season bias ("Refinements of the factor") | The day and night designs (0.98–0.99) | The plain split (0.99) and the fire-season split (0.98); the seasonal night factor leaves 1.07 | [f02](harmonization-tests-research/f02-factor-refinements.md), Protocol A table |
+| 2026-11-14 | What the Kamloops fixed heat source is ("At a glance" point 12; "Static and recurring sources") | The nearest registered facility is a pulp mill 0.4 km away: "proximity, not identification" | Likely the Kruger pulp mill at 2005 Mission Flats Road, on the team's judgment from position and persistence. No source confirms it. | [w03](harmonization-tests-research/w03-data-availability.md#6-the-fixed-heat-source), [Kruger contact page](https://pulp.kruger.com/contact-us) |
 
 ## How this was produced
 
