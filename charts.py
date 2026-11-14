@@ -156,8 +156,10 @@ def calendar(c, view, selected, years):
                         mode="lines", name="Above this line: scaled from MODIS", hoverinfo="skip",
                         line=dict(color=INK, width=1.5, dash="dot"))
     # Invisible markers on every cell carry the hover text and make the cell clickable.
-    fig.add_scatter(x=x, y=y, mode="markers", customdata=c.index.astype(str), showlegend=False,
-                    hovertext=[_hover(t, r) for t, r in c.iterrows()], hoverinfo="text",
+    cells = pd.period_range(f"{years[0]}-01", f"{years[1]}-12", freq="M")     # the empty ones too, so a click on one is not taken for its neighbour
+    fig.add_scatter(x=cells.month, y=cells.year, mode="markers", customdata=cells.astype(str), showlegend=False,
+                    hovertext=[_hover(t, c.loc[t]) if t in c.index else f"{month_name(t)}: no data" for t in cells],
+                    hoverinfo="text",
                     marker=dict(size=20, opacity=0), selected=dict(marker=dict(opacity=0)),
                     unselected=dict(marker=dict(opacity=0)))
     if selected in c.index:

@@ -65,6 +65,14 @@ Fire detections come from [FIRMS](https://firms.modaps.eosdis.nasa.gov/api/):
    streamlit run app.py
    ```
 
+## Tests
+
+```bash
+python -m unittest -v
+```
+
+The tests need the database from step 5 (and the terrain from step 6 for the terrain tests). They recompute the expected numbers from the cached data, so they still pass after the cache is refreshed. They take about a minute.
+
 ## Repo layout
 
 - `README.md`: this file
@@ -77,6 +85,7 @@ Fire detections come from [FIRMS](https://firms.modaps.eosdis.nasa.gov/api/):
 - `charts.py`: the Plotly figures the app shows
 - `animations.py`: the Map tab's period timeline, timelapse map and 3D columns that rise and fall through a period
 - `harmonize.py`: interim MODIS and VIIRS harmonization, to be replaced by the team's final method
+- `test_app.py`: behaviour tests for the calendar numbers, the animations, the terrain and the app
 - `.streamlit/config.toml`: light theme and no usage statistics
 - `docs/`: challenge reference, sensor reference and its research files (see [Documentation](#documentation))
 - `data/`: local FIRMS downloads (gitignored except `data/.gitkeep`)

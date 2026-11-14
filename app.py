@@ -79,8 +79,8 @@ def sentence(t, r):
     text = f"{name} {was} **{charts.CLASSES[int(r.cls)].lower()}**: {place} (compared with {r.since:.0f} to {h.BASE_YEARS[1]})."
     if not np.isnan(r.times_typical):
         x = r.times_typical
-        amount = "more than 100" if x > 100 else f"about {x:.0f}" if x >= 10 else f"{x:.1f}"
-        text += f" That is {amount} times a typical {month}."
+        amount = "more than 100 times" if x > 100 else f"about {x:.0f} times" if x >= 10 else f"{x:.1f} times"
+        text += f" That is {'less than a tenth of' if x < 0.1 else amount} a typical {month}."
     return text
 
 
@@ -132,7 +132,6 @@ with st.sidebar:
         east = right.number_input("East", h.BOX[1], h.BOX[3], kam[3], 0.1, key="east")
         if south >= north or west >= east:
             st.error("South must be below north, and west must be left of east.")
-            st.stop()
         bbox = (south, west, north, east)
     else:
         bbox = PRESETS[area]
@@ -149,6 +148,9 @@ with st.sidebar:
     view = st.radio("Colour by", ["index", "class"],
                     format_func={"index": "Hotspot activity", "class": "Compared with normal"}.get)
     st.caption(f"Data: NASA FIRMS, MODIS and VIIRS 375 m, to {end:%d %B %Y}.")
+
+if bbox[0] >= bbox[2] or bbox[1] >= bbox[3]:
+    st.stop()   # only now, so the rest of the sidebar is drawn and keeps its values
 
 d, c = tables(bbox)
 t = pd.Period(year=year, month=month, freq="M")
@@ -171,7 +173,7 @@ if t in c.index:
     if not np.isnan(r["index"]):
         one, two, three = st.columns(3)
         one.metric("Index", f"{r['index']:,.0f}", help="Hotspots per satellite per 30 days, in VIIRS units.")
-        two.metric(f"Rank among {t.strftime('%B')}s", "-" if np.isnan(r["rank"]) else f"{r['rank']:.0f} of {r.n_years:.0f}")
+        two.metric(f"Rank for {t.strftime('%B')}", "-" if np.isnan(r["rank"]) else f"{r['rank']:.0f} of {r.n_years:.0f}")
         three.metric(f"Typical {t.strftime('%B')}", "-" if np.isnan(r.typical) else f"{r.typical:,.0f}",
                      help="Median of the same month in the other years.")
 else:
@@ -183,7 +185,7 @@ if unranked > 0.15:
                "Small areas are noisy: a larger area gives a steadier calendar.")
 
 calendar_tab, season_tab, map_tab, method_tab, download_tab = st.tabs(
-    ["Calendar", "Season and daily", "Map", "Method", "Download"])
+    ["Calendar", "Season and daily", "Map", "Method", "Download"], key="tabs")   # the key keeps the open tab open
 
 with calendar_tab:
     st.plotly_chart(charts.calendar(c, view, t, years), key="calendar", on_select=pick_month, selection_mode="points",
@@ -216,14 +218,15 @@ with map_tab:
     picks = {"Whole record": (record[0], record[-1]), f"All of {year}": (pd.Period(f"{year}-01"), pd.Period(f"{year}-12")),
              f"June to September {year}": (pd.Period(f"{year}-06"), pd.Period(f"{year}-09")), charts.month_name(t): (t, t)}
     for column, (label, span) in zip(st.columns(len(picks)), picks.items()):
-        column.button(label, on_click=pick_months, args=span, width="stretch")
+        column.button(label, on_click=pick_months, args=span, width="stretch",
+                      disabled=span[1] < record[0] or span[0] > record[-1])
     timeline = st.container()   # drawn above the slider, but it needs the slider's months
     first, last = st.select_slider("Period", record, (record[0], record[-1]), key="months",
                                    format_func=lambda m: m.strftime("%b %Y"), label_visibility="collapsed")
     start, stop = max(first.start_time, FIRST), min(last.end_time.normalize(), end)
     timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), config={"displayModeBar": False})
     n = h.in_box(rows(), bbox).day.between(start, stop).sum()
-    st.caption(f"**{n:,} hotspots** in this area from {start:%d %b %Y} to {stop:%d %b %Y}. "
+    st.caption(f"**{n:,} hotspot{'' if n == 1 else 's'}** in this area from {start:%d %b %Y} to {stop:%d %b %Y}. "
                "Drag the two ends of the slider, or use a button above, to choose the period.")
 
     view = st.radio("View", ["Map", "Timelapse", "3D"], horizontal=True, label_visibility="collapsed")
@@ -295,6 +298,7 @@ changed five times.
 - MODIS misses most small burns outside the fire season. From October to April, months since 2012 are ranked against
   2012 onward only, and earlier months against MODIS years only.
 - Months since August 2026 use provisional near-real-time data and may change.
+- Dates are in Pacific time (UTC-7), as in Kamloops, not the UTC dates in the FIRMS files.
 - Small areas have few hotspots, so many months cannot be ranked.
 - Low-confidence detections and one fixed industrial heat source west of Kamloops are removed.
 """)
@@ -304,10 +308,12 @@ with download_tab:
     if len(dates) == 2:
         a, b = dates
         n = h.in_box(rows(), bbox).day.between(pd.Timestamp(a), pd.Timestamp(b)).sum()
-        st.write(f"**{n:,} hotspots** in {area} from {a:%d %b %Y} to {b:%d %b %Y}, after quality filters.")
+        st.write(f"**{n:,} hotspot{'' if n == 1 else 's'}** in {area} from {a:%d %b %Y} to {b:%d %b %Y}, after quality filters.")
         st.download_button("Download hotspots (CSV)", lambda: h.raw_hotspots(bbox, a, b).to_csv(index=False),
                            file_name=f"hotspots_{a}_{b}.csv", mime="text/csv")
         st.caption("The file has every FIRMS column, unfiltered, so it can hold a few more rows than the count above. "
-                   "Long ranges over a large area take a few seconds. The dates start as the period chosen on the Map tab.")
+                   "Its acq_date and acq_time are UTC, as FIRMS gives them; local_date is the Pacific date (UTC-7) "
+                   "used here. Long ranges over a large area take a few seconds. The dates start as the period "
+                   "chosen on the Map tab.")
     st.download_button("Download the monthly index (CSV)", c.to_csv(index_label="month"),
                        file_name="monthly_index.csv", mime="text/csv")
