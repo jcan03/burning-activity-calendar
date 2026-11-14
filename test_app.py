@@ -27,6 +27,11 @@ T = pd.Timestamp
 FIRST, SUMMER_2021 = T("2000-11-01"), (T("2021-06-01"), T("2021-09-30"))
 
 
+def pacific_day(acq_date, acq_time):
+    """The Pacific day (UTC-7) of FIRMS dates and times: anything before 07:00 UTC belongs to the day before."""
+    return pd.to_datetime(acq_date) - pd.to_timedelta((acq_time < "0700").astype(int), unit="D")
+
+
 def page_data(html):
     """The data block that the 3D page's script plays from."""
     return json.loads(re.search(r"const D = (\{.*?\}), plot = document", html, re.S).group(1))
@@ -47,25 +52,47 @@ class WithData(unittest.TestCase):
 class Harmonize(WithData):
     def test_filters_keep_the_documented_rows(self):
         con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
-        raw = pd.read_sql_query("SELECT latitude, longitude, acq_date, instrument, confidence, type FROM hotspots", con)
+        raw = pd.read_sql_query("SELECT latitude, longitude, acq_date, acq_time, instrument, confidence, type FROM hotspots", con)
         con.close()
         low = np.where(raw.instrument == "MODIS", pd.to_numeric(raw.confidence, errors="coerce") < 30, raw.confidence == "l")
         lat, lon, lat0, lon0 = (np.radians(v) for v in (raw.latitude, raw.longitude, *h.STATIC_SITE))
         km = 2 * 6371 * np.arcsin(np.sqrt(np.sin((lat - lat0) / 2) ** 2 + np.cos(lat0) * np.cos(lat) * np.sin((lon - lon0) / 2) ** 2))
-        kept = ~raw.type.isin([1, 2]) & ~low & (km > 0.4) & (raw.acq_date < raw.acq_date.max())
+        day = pacific_day(raw.acq_date, raw.acq_time)
+        kept = ~raw.type.isin([1, 2]) & ~low & (km > 0.4) & (day >= FIRST) & (day < day.max())
         self.assertEqual(len(self.rows), int(kept.sum()))
 
-    def test_monthly_counts_match_plain_sql(self):
+    def okanagan_sql(self, first, last):
+        """MODIS and VIIRS hotspots kept in the Okanagan between two UTC times, each written as acq_date then acq_time."""
         south, west, north, east = OKANAGAN
         con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
         counted = dict(con.execute(
-            "SELECT instrument, COUNT(*) FROM hotspots WHERE acq_date BETWEEN '2021-07-01' AND '2021-07-31' "
+            "SELECT instrument, COUNT(*) FROM hotspots WHERE acq_date || acq_time >= ? AND acq_date || acq_time < ? "
             "AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ? AND (type IS NULL OR type NOT IN (1, 2)) "
             "AND ((instrument = 'MODIS' AND CAST(confidence AS INTEGER) >= 30) OR (instrument = 'VIIRS' AND confidence <> 'l')) "
-            "GROUP BY instrument", (south, north, west, east)).fetchall())
+            "GROUP BY instrument", (first, last, south, north, west, east)).fetchall())
         con.close()
-        july = h.daily(self.rows, OKANAGAN).loc["2021-07"]
-        self.assertEqual((july.count_modis.sum(), july.count_viirs.sum()), (counted["MODIS"], counted["VIIRS"]))
+        return counted.get("MODIS", 0), counted.get("VIIRS", 0)
+
+    def test_monthly_counts_match_plain_sql(self):
+        july = h.daily(self.rows, OKANAGAN).loc["2021-07"]       # a Pacific month runs from 07:00 UTC on the 1st
+        self.assertEqual((july.count_modis.sum(), july.count_viirs.sum()), self.okanagan_sql("2021-07-010700", "2021-08-010700"))
+
+    def test_days_are_pacific_days(self):
+        day = h.daily(self.rows, OKANAGAN).loc["2021-08-05"]
+        self.assertEqual((day.count_modis, day.count_viirs), self.okanagan_sql("2021-08-050700", "2021-08-060700"))
+        # Terra passes late in the evening, which is already 6 August in UTC. Those hotspots belong to 5 August.
+        self.assertGreater(self.okanagan_sql("2021-08-060000", "2021-08-060700")[0], 100)
+
+    def test_the_csv_download_is_cut_by_pacific_days(self):
+        raw = h.raw_hotspots(OKANAGAN, "2021-08-05", "2021-08-06")
+        self.assertEqual(sorted(raw.local_date.unique()), ["2021-08-05", "2021-08-06"])
+        self.assertTrue((pacific_day(raw.acq_date, raw.acq_time).dt.strftime("%Y-%m-%d") == raw.local_date).all())
+        con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
+        counted = con.execute(
+            "SELECT COUNT(*) FROM hotspots WHERE acq_date || acq_time >= '2021-08-050700' AND acq_date || acq_time < '2021-08-070700' "
+            "AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?", (OKANAGAN[0], OKANAGAN[2], OKANAGAN[1], OKANAGAN[3])).fetchone()[0]
+        con.close()
+        self.assertEqual(len(raw), counted)
 
     def test_index_is_hotspots_per_satellite_per_30_days(self):
         july = self.calendar.loc["2021-07"]             # Suomi NPP and NOAA-20 flew all 31 days
@@ -129,11 +156,13 @@ class Harmonize(WithData):
         self.assertEqual(self.daily.loc["2001-06-20", "sats_modis"], 0)     # Terra, then the only satellite, was out
         self.assertEqual(self.daily.loc["2022-10-15", "sats_modis"], 1)
 
-    def test_the_day_of_the_download_is_left_out(self):
+    def test_part_days_at_both_ends_are_left_out(self):
         con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
-        last = con.execute("SELECT MAX(acq_date) FROM hotspots").fetchone()[0]
+        last = con.execute("SELECT MAX(acq_date || acq_time) FROM hotspots").fetchone()[0]
         con.close()
-        self.assertEqual(self.end, T(last) - pd.Timedelta(days=1))
+        downloaded = pd.to_datetime(last, format="%Y-%m-%d%H%M") - pd.Timedelta(hours=7)     # in Pacific time
+        self.assertEqual(self.end, downloaded.normalize() - pd.Timedelta(days=1))
+        self.assertGreaterEqual(self.rows.day.min(), FIRST)      # the evening of 31 October 2000 is not a whole day
 
 
 class Animations(WithData):
@@ -305,6 +334,15 @@ class App(unittest.TestCase):
         at.number_input(key="north").set_value(50.0)
         at.run()
         self.assertTrue(any("South must be below north" in e.value for e in at.error))
+
+    def test_a_refused_box_does_not_reset_the_sidebar(self):
+        at = self.choose(self.run_app(), year=2015, month=8, area="Custom box")
+        at.number_input(key="south").set_value(51.5)        # above north: refused
+        at.run()
+        at.number_input(key="south").set_value(50.5)
+        at.run()
+        self.assertEqual((at.selectbox(key="year").value, at.selectbox(key="month").value), (2015, 8))
+        self.assertIn("August 2015", at.markdown[0].value)
 
     def test_an_empty_area_says_so(self):
         at = self.choose(self.run_app(), area="Custom box")

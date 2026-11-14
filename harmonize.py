@@ -9,6 +9,7 @@ Method (see docs/harmonization-research.md):
   is the VIIRS rate. Before that it is the MODIS rate times one factor, k.
   Satellites are never added together.
 - Each month is ranked against the same calendar month in other years.
+- Days are Pacific days (UTC-7), not the UTC days in the FIRMS files.
 """
 import sqlite3
 from pathlib import Path
@@ -20,11 +21,14 @@ DB = Path(__file__).parent / "data" / "kamloops.sqlite"
 BOX = (49.0, -122.5, 52.5, -118.0)  # south, west, north, east of the cached data
 MODIS, VIIRS = ["Terra", "Aqua"], ["N", "N20", "N21"]
 STATIC_SITE = (50.68872, -120.40745)  # fixed night-time heat source west of Kamloops
+UTC_OFFSET = -7  # hours. Hotspots are dated in Pacific time, as in Kamloops, not the UTC of the FIRMS files
+LOCAL_DAY = f"date(acq_date || ' ' || substr(acq_time, 1, 2) || ':' || substr(acq_time, 3, 2), '{UTC_OFFSET} hours')"
 # First and last day each satellite has data in FIRMS (None = still flying).
 SERVICE = {"Terra": ("2000-11-01", None), "Aqua": ("2002-07-04", None), "N": ("2012-01-20", "2026-11-02"),
            "N20": ("2018-04-01", None), "N21": ("2023-03-01", None)}
 # Whole days a satellite sent nothing: the gaps in docs/sensor-reference.md, trimmed to full days and
-# checked against the data wherever the season was busy enough to show them.
+# checked against the data wherever the season was busy enough to show them. These are UTC days; a gap
+# covers the same number of Pacific days, 7 hours earlier, which is near enough.
 OUTAGES = {
     "Terra": [("2001-06-15", "2001-07-03"), ("2002-03-19", "2002-03-28"), ("2003-12-16", "2003-12-24"),
               ("2016-02-18", "2016-02-24"), ("2022-10-11", "2022-10-21")],
@@ -40,11 +44,12 @@ MIN_SAT_DAYS, MIN_YEARS, TIE_SHARE, MIN_TYPICAL = 8, 8, 0.2, 3
 
 
 def load_rows():
-    """Filtered hotspots for the whole box: lat, lon, day, sat, nrt."""
+    """Filtered hotspots for the whole box: lat, lon, day (Pacific time), sat, nrt."""
     con = sqlite3.connect(f"file:{DB.as_posix()}?mode=ro", uri=True)
     df = pd.read_sql_query(
-        "SELECT latitude lat, longitude lon, acq_date day, satellite sat, confidence conf, type FROM hotspots", con)
+        "SELECT latitude lat, longitude lon, acq_date || acq_time utc, satellite sat, confidence conf, type FROM hotspots", con)
     con.close()
+    day = (pd.to_datetime(df.utc, format="%Y-%m-%d%H%M") + pd.Timedelta(hours=UTC_OFFSET)).dt.normalize()
     conf = pd.to_numeric(df.conf, errors="coerce")
     km_north = (df.lat - STATIC_SITE[0]) * 111.2
     km_east = (df.lon - STATIC_SITE[1]) * 111.2 * np.cos(np.radians(STATIC_SITE[0]))
@@ -52,9 +57,10 @@ def load_rows():
         ~df.type.isin([1, 2])                                             # volcano, static source
         & (np.hypot(km_north, km_east) > 0.4)                             # the static site, typed or not
         & np.where(df.sat.isin(MODIS), conf >= 30, df.conf != "l")        # low confidence
+        & (day >= SERVICE["Terra"][0]) & (day < day.max())                # the first and last days are only part of a day
     )
-    df = df[keep & (df.day < df.day.max())]    # the day of the download is only part of a day, so leave it out
-    return pd.DataFrame({"lat": df.lat, "lon": df.lon, "day": pd.to_datetime(df.day),
+    df = df[keep]
+    return pd.DataFrame({"lat": df.lat, "lon": df.lon, "day": day[keep],
                          "sat": df.sat.astype("category"), "nrt": df.type.isna()})
 
 
@@ -168,11 +174,11 @@ def daily_index(d, k):
 
 
 def raw_hotspots(bbox, start, end):
-    """Unfiltered FIRMS rows in the area and date range, for the CSV download."""
+    """Unfiltered FIRMS rows in the area and range of Pacific days, for the CSV download."""
     south, west, north, east = bbox
     con = sqlite3.connect(f"file:{DB.as_posix()}?mode=ro", uri=True)
     df = pd.read_sql_query(
-        "SELECT * FROM hotspots WHERE acq_date BETWEEN ? AND ? AND latitude BETWEEN ? AND ? "
+        f"SELECT *, {LOCAL_DAY} local_date FROM hotspots WHERE local_date BETWEEN ? AND ? AND latitude BETWEEN ? AND ? "
         "AND longitude BETWEEN ? AND ? ORDER BY acq_date, acq_time",
         con, params=(str(start), str(end), south, north, west, east))
     con.close()

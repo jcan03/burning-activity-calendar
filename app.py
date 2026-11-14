@@ -132,7 +132,6 @@ with st.sidebar:
         east = right.number_input("East", h.BOX[1], h.BOX[3], kam[3], 0.1, key="east")
         if south >= north or west >= east:
             st.error("South must be below north, and west must be left of east.")
-            st.stop()
         bbox = (south, west, north, east)
     else:
         bbox = PRESETS[area]
@@ -149,6 +148,9 @@ with st.sidebar:
     view = st.radio("Colour by", ["index", "class"],
                     format_func={"index": "Hotspot activity", "class": "Compared with normal"}.get)
     st.caption(f"Data: NASA FIRMS, MODIS and VIIRS 375 m, to {end:%d %B %Y}.")
+
+if bbox[0] >= bbox[2] or bbox[1] >= bbox[3]:
+    st.stop()   # only now, so the rest of the sidebar is drawn and keeps its values
 
 d, c = tables(bbox)
 t = pd.Period(year=year, month=month, freq="M")
@@ -183,7 +185,7 @@ if unranked > 0.15:
                "Small areas are noisy: a larger area gives a steadier calendar.")
 
 calendar_tab, season_tab, map_tab, method_tab, download_tab = st.tabs(
-    ["Calendar", "Season and daily", "Map", "Method", "Download"])
+    ["Calendar", "Season and daily", "Map", "Method", "Download"], key="tabs")   # the key keeps the open tab open
 
 with calendar_tab:
     st.plotly_chart(charts.calendar(c, view, t, years), key="calendar", on_select=pick_month, selection_mode="points",
@@ -296,7 +298,7 @@ changed five times.
 - MODIS misses most small burns outside the fire season. From October to April, months since 2012 are ranked against
   2012 onward only, and earlier months against MODIS years only.
 - Months since August 2026 use provisional near-real-time data and may change.
-- Dates are in UTC, so a fire burning in the evening in Kamloops is dated the next day.
+- Dates are in Pacific time (UTC-7), as in Kamloops, not the UTC dates in the FIRMS files.
 - Small areas have few hotspots, so many months cannot be ranked.
 - Low-confidence detections and one fixed industrial heat source west of Kamloops are removed.
 """)
@@ -310,6 +312,8 @@ with download_tab:
         st.download_button("Download hotspots (CSV)", lambda: h.raw_hotspots(bbox, a, b).to_csv(index=False),
                            file_name=f"hotspots_{a}_{b}.csv", mime="text/csv")
         st.caption("The file has every FIRMS column, unfiltered, so it can hold a few more rows than the count above. "
-                   "Long ranges over a large area take a few seconds. The dates start as the period chosen on the Map tab.")
+                   "Its acq_date and acq_time are UTC, as FIRMS gives them; local_date is the Pacific date (UTC-7) "
+                   "used here. Long ranges over a large area take a few seconds. The dates start as the period "
+                   "chosen on the Map tab.")
     st.download_button("Download the monthly index (CSV)", c.to_csv(index_label="month"),
                        file_name="monthly_index.csv", mime="text/csv")

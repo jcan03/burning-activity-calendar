@@ -104,8 +104,9 @@ def timelapse(points, bbox, start, stop, max_dots=1000):
         legend=dict(orientation="h", y=1.02, x=1, xanchor="right"),
         updatemenus=[dict(type="buttons", direction="left", x=0, y=-0.1, xanchor="left", yanchor="top", showactive=False,
                           buttons=[dict(label="Play", method="animate", args=[None, go_to]),
-                                   dict(label="Pause", method="animate", args=[[None], go_to])])],
-        sliders=[dict(x=0.14, len=0.86, y=-0.1, yanchor="top", currentvalue=dict(visible=False),
+                                   dict(label="Pause", method="animate", args=[[None], go_to]),
+                                   dict(label="Resume", method="animate", args=[None, dict(go_to, fromcurrent=True)])])],
+        sliders=[dict(x=0.22, len=0.78, y=-0.1, yanchor="top", currentvalue=dict(visible=False),
                       steps=[dict(label=name.split(" to ")[0] if i % -(-n // 8) == 0 else "", method="animate", args=[[name], go_to])
                              for i, name in enumerate(labels)])])
     return fig
