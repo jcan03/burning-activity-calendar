@@ -247,6 +247,10 @@ class Animations(WithData):
         left = np.array(summer["col"]) * summer["cell"]
         self.assertTrue((np.abs(left - np.array(summer["x0"])) < summer["cell"]).all())      # the scar's square is the column's
         self.assertEqual(len(summer["ground"]) % summer["across"], 0)
+        # Only big patches are outlined: the script turns heights back into activity to add a patch up.
+        html, top, cell_km, stretch = animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)
+        self.assertEqual((summer["big"], summer["adds"]), (animations.SCAR, False))
+        self.assertAlmostEqual(summer["most"], top)      # the activity that the tallest height stands for
 
     def test_3d_squares_widen_when_there_are_too_many(self):
         html, top, cell_km, stretch = animations.columns_3d(self.points, h.BOX, FIRST, self.end, 2)

@@ -18,6 +18,7 @@ LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d9cfa0"], [0.20, "#c8c890"
 LOW, HIGH = 200, 2800  # metres at the first and last land colour
 GROUND_PIXELS = 180    # cells along the longer side of the 3D ground; more is sharper but slower to play
 RELIEF = 0.04          # the ground's highest point stands this share of the area's width above its lowest
+SCAR = 100             # a burnt patch gets a burn-scar outline once its activity in 12 months adds up to this
 # Corner offsets of a column (four at the base, four at the top) and the 12 triangles that close it.
 CORNER_X, CORNER_Y = np.array([-1, 1, 1, -1, -1, 1, 1, -1]), np.array([-1, -1, 1, 1, -1, -1, 1, 1])
 FACES = np.array([[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4],
@@ -155,11 +156,31 @@ function groundAt(x, y) {   // height of the ground at a place, between its four
 }
 let scarred = null;   // the squares outlined at the moment
 function scars(f) {
-  // Burn scars: a dark line around the squares that burned in this step or the D.keep - 1 before it (12 months),
-  // laid on the ground. Returns null when the outline is the one already drawn.
-  const burnt = new Uint8Array(D.x0.length), x = [], y = [], z = [];
+  // Burn scars: a dark line laid on the ground around each big burnt patch, to show where a wildfire was.
+  // A patch is squares that touch (corners count) and burned in this step or the D.keep - 1 before it (12 months).
+  // It is big when its activity in that time adds up to D.big. Returns null when the outline is already drawn.
+  const active = new Float32Array(D.x0.length), burnt = new Uint8Array(D.x0.length), x = [], y = [], z = [];
   for (let g = Math.max(0, f - D.keep + 1); g <= f; g++)
-    for (let i = 0; i < D.heights[g].length; i += 2) burnt[D.heights[g][i]] = 1;
+    for (let i = 0; i < D.heights[g].length; i += 2) {
+      const c = D.heights[g][i], a = (D.heights[g][i + 1] / D.top) ** 2 * D.most;   // undo the square root
+      active[c] = D.adds ? Math.max(active[c], a) : active[c] + a;   // heights that add up already hold the total
+    }
+  const seen = new Uint8Array(D.x0.length);
+  active.forEach((a, first) => {
+    if (!a || seen[first]) return;
+    const patch = [first];
+    let total = 0;
+    seen[first] = 1;
+    for (let m = 0; m < patch.length; m++) {
+      const c = patch[m];
+      total += active[c];
+      for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
+        const n = squareAt.get((D.col[c] + dc) * 1e5 + D.row[c] + dr);
+        if (n !== undefined && active[n] && !seen[n]) { seen[n] = 1; patch.push(n); }
+      }
+    }
+    if (total >= D.big) patch.forEach(c => { burnt[c] = 1; });
+  });
   if (scarred && burnt.every((b, c) => b === scarred[c])) return null;
   scarred = burnt;
   const pace = D.wide / (D.across - 1);   // one point for each cell of ground the line crosses
@@ -314,7 +335,7 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     fig.add_scatter3d(x=city_x, y=city_y, z=ground_at(city_x, city_y) + 0.02 * tallest,
                       mode="markers+text", text=list(cities), textposition="top center", hoverinfo="skip",
                       marker=dict(size=3, color=INK), textfont=dict(size=12, color=INK))
-    # Burn scars: the page's script draws a dark line here around squares that burned in the last 12 months.
+    # Burn scars: the page's script draws a dark line here around big patches that burned in the last 12 months.
     fig.add_scatter3d(x=[None], y=[None], z=[None], mode="lines", line=dict(color="#241c18", width=5), hoverinfo="skip")
     keep = max(1, round(n * 365 / ((stop - start).days + 1)))    # how many frames make 12 months
     eye = dict(x=0.09, y=-1.1, z=0.62)
@@ -334,6 +355,7 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
                 # For the burn scars: each square's place in the grid, and the ground to lay the lines on.
                 col=grid.index.get_level_values("col").tolist(), row=grid.index.get_level_values("row").tolist(),
                 cell=cell_km, wide=round(wide, 2), tall=round(tall, 2), keep=keep, scar=len(fig.data) - 1,
+                big=SCAR, most=float(top), adds=add_up,     # `most` is the activity that the tallest height stands for
                 ground=ground.round(2).ravel().tolist(), across=ground.shape[1], lift=round(0.004 * max(wide, tall), 2))
     plot = fig.to_html(full_html=False, include_plotlyjs=True, div_id="plot", config={"displayModeBar": False})
     # The plot goes in last: it carries all of plotly.js, which must not be searched for the other markers.
