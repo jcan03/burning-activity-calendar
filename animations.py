@@ -11,12 +11,12 @@ import plotly.graph_objects as go
 from charts import ACCENT, CITIES, FIRE, INK, MODIS_COLOR, MUTED, PAGE, VIIRS_COLOR, map_frame, relief
 from harmonize import MODIS, in_box
 
-COLUMNS = FIRE[2:]     # the 3D columns take the ramp from deep red up: a column only stands where something burned
+COLUMNS = FIRE[1:]     # the 3D columns take the ramp from deep red up: a column only stands where something burned
 CHAR = "#241c18"       # burn-scar outlines and place names, which sit on the 3D view's light ground
-# Ground colours by elevation: water, then dry valley floors, forested plateaus and bare summits. The greens lean
-# towards blue so that orange columns stay distinct from the forest with red-green colour-blind vision.
-LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d2cba5"], [0.20, "#bfc296"], [0.33, "#96b68c"],
-        [0.50, "#679878"], [0.66, "#4e7e69"], [0.78, "#898a7c"], [0.90, "#c9c7bd"], [1.0, "#f5f4f0"]]
+# Ground colours by elevation: water, then dry valley floors, forested plateaus and bare summits. These greens are
+# as green as they can be: a richer green is too close to the orange columns with red-green colour-blind vision.
+LAND = [[0.0, "#4f86c6"], [0.08, "#4f86c6"], [0.10, "#d9cfa0"], [0.20, "#c8c890"], [0.33, "#9db87a"],
+        [0.50, "#6f9b68"], [0.66, "#5a8160"], [0.78, "#8d8b76"], [0.90, "#c9c5b8"], [1.0, "#f5f4f0"]]
 LOW, HIGH = 200, 2800  # metres at the first and last land colour
 GROUND_PIXELS = 180    # cells along the longer side of the 3D ground; more is sharper but slower to play
 RELIEF = 0.04          # the ground's highest point stands this share of the area's width above its lowest

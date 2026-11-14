@@ -21,9 +21,10 @@ CLASSES = ["Much below normal", "Below normal", "Near normal", "Above normal", "
 # One palette for the whole app, on a near-black page (.streamlit/config.toml sets the same page colour).
 # Each set was checked for colour-blind readers with the dataviz skill's validator.
 PAGE = "#0d0b0a"
-# Amount of burning: near-black for none, through deep red and orange, to bright amber for the most.
-# It gets steadily brighter, so it reads in the right order without telling the colours apart.
-FIRE = ["#221310", "#4d150c", "#82230d", "#b83a0f", "#e0661a", "#f29a2e", "#ffc94d"]
+# Amount of burning: near-black for none, through deep red, orange and yellow, to near-white for the most.
+# The six colours fall close to 0, 10, 100, 1,000, 10,000 and the top of the calendar's scale, and each is clearly
+# brighter than the one before, so it reads in the right order without telling the colours apart.
+FIRE = ["#2a1814", "#8a1f10", "#d6470f", "#fb8c1e", "#ffd83d", "#fffbd6"]
 # Compared with normal: blue below and amber above a dark grey, brighter the further from normal.
 CLASS_COLORS = ["#6fb1ff", "#2f66a8", "#3a3a37", "#a85a14", "#ffb347"]
 UNRANKED = "#6b6a65"
@@ -156,7 +157,7 @@ def calendar(c, view, selected, years, top=60000):
     else:
         ticks = [tick for tick in (0, 10, 100, 1000, 10000) if tick <= top]
         fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(top + 1),
-                        colorscale=[[i / 6, col] for i, col in enumerate(FIRE)], xgap=2, ygap=2, hoverinfo="skip",
+                        colorscale=[[i / (len(FIRE) - 1), col] for i, col in enumerate(FIRE)], xgap=2, ygap=2, hoverinfo="skip",
                         colorbar=dict(title="Index", tickvals=np.log10(np.array(ticks) + 1),
                                       ticktext=[f"{t:,}" for t in ticks], len=0.5, thickness=12))
     s = c[c.nrt]
