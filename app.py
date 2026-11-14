@@ -280,6 +280,9 @@ with map_tab:
                        f"Its height is the square root of its activity (hotspots per satellite, in VIIRS units); "
                        f"the tallest stands for {top:,.0f}. Heights are relative to the busiest square of this "
                        "period, so they cannot be compared between periods.")
+            st.caption("Burn scars: a dark outline stays around squares for 12 months after they burn, so it remains "
+                       "when the columns drop. It marks squares with hotspots, not a surveyed fire perimeter, and "
+                       "burning from before the period shown leaves no outline.")
             if stretch:
                 st.caption(f"The ground is real elevation, coloured from dry valley floors through forest to bare "
                            f"summits, with lakes and wide rivers in blue. It is drawn {stretch:.0f} times taller than "

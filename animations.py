@@ -145,6 +145,43 @@ const D = __DATA__, plot = document.getElementById('plot'), slider = document.ge
 const date = document.getElementById('date'), button = document.getElementById('play');
 const SX = [-1, 1, 1, -1, -1, 1, 1, -1], SY = [-1, -1, 1, 1, -1, -1, 1, 1], LAST = D.dates.length - 1;
 let timer = null, next = 0;   // Play starts from the first step
+const squareAt = new Map(D.col.map((c, i) => [c * 1e5 + D.row[i], i]));
+function groundAt(x, y) {   // height of the ground at a place, between its four nearest cells
+  const gx = Math.min(Math.max(x / D.wide, 0), 1) * (D.across - 1), gy = Math.min(Math.max(y / D.tall, 0), 1) * (D.ground.length / D.across - 1);
+  const i = Math.min(Math.floor(gx), D.across - 2), j = Math.min(Math.floor(gy), D.ground.length / D.across - 2), u = gx - i, v = gy - j;
+  const g = (a, b) => D.ground[b * D.across + a];
+  return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v;
+}
+let scarred = null;   // the squares outlined at the moment
+function scars(f) {
+  // Burn scars: a dark line around the squares that burned in this step or the D.keep - 1 before it (12 months),
+  // laid on the ground. Returns null when the outline is the one already drawn.
+  const burnt = new Uint8Array(D.x0.length), x = [], y = [], z = [];
+  for (let g = Math.max(0, f - D.keep + 1); g <= f; g++)
+    for (let i = 0; i < D.heights[g].length; i += 2) burnt[D.heights[g][i]] = 1;
+  if (scarred && burnt.every((b, c) => b === scarred[c])) return null;
+  scarred = burnt;
+  const pace = D.wide / (D.across - 1);   // one point for each cell of ground the line crosses
+  const line = (xa, ya, xb, yb) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(xb - xa, yb - ya) / pace));
+    for (let s = 0; s <= n; s++) {
+      const px = xa + (xb - xa) * s / n, py = ya + (yb - ya) * s / n;
+      x.push(px); y.push(py); z.push(groundAt(px, py) + D.lift);
+    }
+    x.push(null); y.push(null); z.push(null);
+  };
+  burnt.forEach((b, c) => {
+    if (!b) return;
+    const col = D.col[c], row = D.row[c], xa = col * D.cell, xb = Math.min(xa + D.cell, D.wide);
+    const ya = row * D.cell, yb = Math.min(ya + D.cell, D.tall);
+    const open = (dc, dr) => { const n = squareAt.get((col + dc) * 1e5 + row + dr); return n === undefined || !burnt[n]; };
+    if (open(-1, 0)) line(xa, ya, xa, yb);   // only the sides that face unburnt ground
+    if (open(1, 0)) line(xb, ya, xb, yb);
+    if (open(0, -1)) line(xa, ya, xb, ya);
+    if (open(0, 1)) line(xa, yb, xb, yb);
+  });
+  return [x, y, z];
+}
 function show(f) {
   slider.value = f; date.textContent = D.dates[f];
   const x = [], y = [], z = [], colour = [], height = new Float32Array(D.x0.length), pairs = D.heights[f];
@@ -158,7 +195,9 @@ function show(f) {
     }
     for (let t = 0; t < 12; t++) colour.push(h / D.top);
   });
-  Plotly.restyle(plot, {x: [x], y: [y], z: [z], intensity: [colour]}, [0]);   // restyle keeps the camera
+  const scar = scars(f);   // restyle keeps the camera; one call for both, so the view is drawn once
+  if (scar) Plotly.restyle(plot, {x: [x, scar[0]], y: [y, scar[1]], z: [z, scar[2]], intensity: [colour, undefined]}, [0, D.scar]);
+  else Plotly.restyle(plot, {x: [x], y: [y], z: [z], intensity: [colour]}, [0]);
   if (D.orbit && timer) {
     const a = D.orbit * Math.PI / 180 * (f / LAST - 0.5), r = Math.hypot(D.eye.x, D.eye.y);
     const a0 = Math.atan2(D.eye.x, -D.eye.y);
@@ -172,7 +211,7 @@ button.onclick = () => {
   timer = setInterval(() => { show(next); next = next < LAST ? next + 1 : 0; if (next === 0) stop(); }, 90);
 };
 slider.oninput = () => { stop(); show(+slider.value); next = +slider.value < LAST ? +slider.value + 1 : 0; };
-slider.value = D.shown; date.textContent = D.dates[D.shown];
+show(D.shown);
 </script>"""
 
 
@@ -274,6 +313,9 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     fig.add_scatter3d(x=city_x, y=city_y, z=ground_at(city_x, city_y) + 0.02 * tallest,
                       mode="markers+text", text=list(cities), textposition="top center", hoverinfo="skip",
                       marker=dict(size=3, color=INK), textfont=dict(size=12, color=INK))
+    # Burn scars: the page's script draws a dark line here around squares that burned in the last 12 months.
+    fig.add_scatter3d(x=[None], y=[None], z=[None], mode="lines", line=dict(color="#241c18", width=5), hoverinfo="skip")
+    keep = max(1, round(n * 365 / ((stop - start).days + 1)))    # how many frames make 12 months
     eye = dict(x=0.09, y=-1.1, z=0.62)
     ceiling = ground.max() + tallest * 1.05
     fig.update_layout(
@@ -287,7 +329,11 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     # For each frame, only the squares that are burning: [square, height, square, height, ...].
     burning = [[v for c in np.flatnonzero(frame) for v in (int(c), float(frame[c]))] for frame in heights.T]
     data = dict(heights=burning, dates=labels, top=tallest, orbit=orbit, eye=eye, shown=shown,
-                **{name: values.round(2).tolist() for name, values in dict(x0=x0, x1=x1, y0=y0, y1=y1, foot=foot, base=base).items()})
+                **{name: values.round(2).tolist() for name, values in dict(x0=x0, x1=x1, y0=y0, y1=y1, foot=foot, base=base).items()},
+                # For the burn scars: each square's place in the grid, and the ground to lay the lines on.
+                col=grid.index.get_level_values("col").tolist(), row=grid.index.get_level_values("row").tolist(),
+                cell=cell_km, wide=round(wide, 2), tall=round(tall, 2), keep=keep, scar=len(fig.data) - 1,
+                ground=ground.round(2).ravel().tolist(), across=ground.shape[1], lift=round(0.004 * max(wide, tall), 2))
     plot = fig.to_html(full_html=False, include_plotlyjs=True, div_id="plot", config={"displayModeBar": False})
     # The plot goes in last: it carries all of plotly.js, which must not be searched for the other markers.
     html = PLAYER.replace("__LAST__", str(n - 1)).replace("__DATA__", json.dumps(data, separators=(",", ":")))

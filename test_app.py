@@ -224,6 +224,16 @@ class Animations(WithData):
         self.assertTrue((d["x1"] <= wide + 0.01).all() and (d["y1"] <= tall + 0.01).all())
         self.assertTrue((d["foot"] <= d["base"] + 1e-9).all())
 
+    def test_3d_burn_scars_last_twelve_months(self):
+        # The page's script outlines squares that burned in the last `keep` frames; it needs each square's grid place.
+        whole = page_data(animations.columns_3d(self.points, KAMLOOPS, FIRST, self.end, 2)[0])
+        self.assertEqual(whole["keep"], 12)                                   # monthly frames
+        summer = page_data(animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)[0])
+        self.assertEqual((len(summer["dates"]), summer["keep"]), (122, 365))   # daily frames: a scar outlasts the period
+        left = np.array(summer["col"]) * summer["cell"]
+        self.assertTrue((np.abs(left - np.array(summer["x0"])) < summer["cell"]).all())      # the scar's square is the column's
+        self.assertEqual(len(summer["ground"]) % summer["across"], 0)
+
     def test_3d_squares_widen_when_there_are_too_many(self):
         html, top, cell_km, stretch = animations.columns_3d(self.points, h.BOX, FIRST, self.end, 2)
         self.assertGreater(cell_km, 2)
