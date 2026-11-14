@@ -139,6 +139,20 @@ class Harmonize(WithData):
         self.assertTrue((small.count_viirs <= whole.count_viirs).all() and (small.count_modis <= whole.count_modis).all())
         self.assertEqual(h.daily(self.rows, EMPTY)[["count_modis", "count_viirs"]].to_numpy().sum(), 0)
 
+    def test_a_circled_region_counts_only_what_is_inside(self):
+        # A five-sided outline with its corners in anticlockwise order: a point is inside if it is left of every side.
+        shape = [(-120.913, 50.3117), (-119.8731, 50.2771), (-119.7219, 50.9133), (-120.4127, 51.0619), (-121.0033, 50.7411)]
+        left = np.ones(len(self.rows), bool)
+        for (x0, y0), (x1, y1) in zip(shape, shape[1:] + shape[:1]):
+            left &= ((x1 - x0) * (self.rows.lat - y0) - (y1 - y0) * (self.rows.lon - x0) > 0).to_numpy()
+        inside = h.in_shape(self.rows, shape)
+        self.assertEqual(len(inside), int(left.sum()))
+        self.assertGreater(len(inside), 10000)
+        self.assertEqual(len(h.in_shape(self.rows, shape[::-1])), len(inside))       # drawn the other way round
+        counted = h.daily(self.rows, h.BOX, shape)
+        self.assertEqual(counted.count_modis.sum() + counted.count_viirs.sum(), len(inside))
+        self.assertEqual(len(counted), len(self.daily))                              # still the whole record
+
     def test_a_month_too_tied_to_place_gets_no_rank(self):
         c = h.calendar_table(h.monthly_rates(h.daily(self.rows, OKANAGAN)), self.k)
         self.assertTrue(c.uncertain.any())
@@ -349,6 +363,14 @@ class App(unittest.TestCase):
         at.run()
         self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
         self.assertIn("All of 2021", [b.label for b in at.button])
+
+    def test_a_circled_region_opens_its_calendar(self):
+        at = self.run_app()
+        at.session_state["region"] = ((-120.9, 50.3), (-119.9, 50.3), (-119.8, 50.9), (-120.9, 50.9))
+        at.session_state["open_region"] = True      # what circling a region on the map sets
+        at.run()
+        self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
+        self.assertTrue(any("km²" in m.value and "hotspots" in m.value for m in at.markdown))
 
     def test_a_month_outside_the_record_says_so(self):
         at = self.choose(self.run_app(), year=2000, month=3)

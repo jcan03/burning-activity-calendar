@@ -121,8 +121,12 @@ def _hover(t, r):
     return "<br>".join(lines + [f"<i>{n}</i>" for n in flags(r)])
 
 
-def calendar(c, view, selected, years):
-    """Year by month heatmap. view is 'class' or 'index'. Cells can be clicked (customdata = month)."""
+def calendar(c, view, selected, years, top=60000):
+    """Year by month heatmap. view is 'class' or 'index'. Cells can be clicked (customdata = month).
+
+    `top` is the index that gets the darkest colour: the same for every area, so areas can be compared,
+    unless a small region is given its own.
+    """
     c = c[(c.index.year >= years[0]) & (c.index.year <= years[1])]
     yrs = list(range(years[0], years[1] + 1))
     x, y = c.index.month, c.index.year
@@ -143,8 +147,8 @@ def calendar(c, view, selected, years):
         fig.add_scatter(x=s.index.month, y=s.index.year, mode="markers", name="Record for that month", hoverinfo="skip",
                         marker=dict(symbol="star", size=11, color="white", line=dict(color=INK, width=1)))
     else:
-        ticks = [0, 10, 100, 1000, 10000]
-        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(60001),
+        ticks = [tick for tick in (0, 10, 100, 1000, 10000) if tick <= top]
+        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(top + 1),
                         colorscale=[[i / 6, col] for i, col in enumerate(BLUES)], xgap=2, ygap=2, hoverinfo="skip",
                         colorbar=dict(title="Index", tickvals=np.log10(np.array(ticks) + 1),
                                       ticktext=[f"{t:,}" for t in ticks], len=0.5, thickness=12))
@@ -260,7 +264,7 @@ def map_frame(fig, bbox):
 
 
 def hotspot_map(points, bbox, title):
-    """Hotspot locations in the chosen area. Drag a box to zoom in to a smaller one."""
+    """Hotspot locations in the chosen area. It can be zoomed, and a region circled or a box dragged on it."""
     if len(points) > 20000:
         points = points.sample(20000, random_state=0)
     fig = go.Figure()
@@ -269,7 +273,8 @@ def hotspot_map(points, bbox, title):
         fig.add_scattergl(x=p.lon, y=p.lat, mode="markers", name=name, marker=dict(size=4, color=color, opacity=0.55),
                           hovertemplate="%{y:.3f}, %{x:.3f}<extra>" + name + "</extra>")
     map_frame(fig, bbox)
-    fig.update_layout(height=620, margin=dict(l=10, r=10, t=40, b=10), title=title, dragmode="select",
+    fig.update_layout(height=620, margin=dict(l=10, r=10, t=40, b=10), title=title, dragmode="lasso",
+                      uirevision=str(bbox),      # keep the zoom when the dots change, until the area does
                       legend=dict(orientation="h", y=-0.08, yanchor="top"))
     return fig
 

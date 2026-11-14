@@ -95,15 +95,46 @@ def pick_month():
         st.session_state.year, st.session_state.month = t.year, t.month
 
 
-def pick_area():
-    """Box drawn on the map: use it as the area."""
-    boxes = st.session_state.map["selection"]["box"]
-    if boxes:
-        west, east = sorted(boxes[0]["x"])
-        south, north = sorted(boxes[0]["y"])
+def pick_on_map():
+    """Map selection: a circled region opens its own calendar; a box becomes the app's area."""
+    selection = st.session_state.map["selection"]
+    if selection["lasso"]:
+        lon, lat = selection["lasso"][0]["x"], selection["lasso"][0]["y"]
+        some = -(-len(lon) // 120)      # a line drawn by hand has far more corners than it needs
+        st.session_state.region = tuple(zip(lon[::some], lat[::some]))
+        st.session_state.open_region = len(st.session_state.region) > 2
+    elif selection["box"]:
+        west, east = sorted(selection["box"][0]["x"])
+        south, north = sorted(selection["box"][0]["y"])
         st.session_state.area = CUSTOM
         st.session_state.south, st.session_state.north = round(max(south, h.BOX[0]), 2), round(min(north, h.BOX[2]), 2)
         st.session_state.west, st.session_state.east = round(max(west, h.BOX[1]), 2), round(min(east, h.BOX[3]), 2)
+
+
+@st.cache_data(max_entries=8, show_spinner="Counting hotspots in the circled region...")
+def region_table(shape):
+    return h.calendar_table(h.monthly_rates(h.daily(rows(), h.BOX, shape)), factor()[0])
+
+
+@st.dialog("Circled region", width="large")
+def region_calendar(shape, t, colour, years):
+    """The burning calendar of a region circled on the map."""
+    c = region_table(shape)
+    n = int(c.count_modis.sum() + c.count_viirs.sum())
+    if n == 0:
+        st.info("No hotspots in the circled region. Close this and circle a larger one.")
+        return
+    lon, lat = np.array(shape).T
+    x, y = lon * 111.2 * np.cos(np.radians(lat.mean())), lat * 111.2
+    km2 = abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) / 2
+    st.markdown(f"**{n:,} hotspot{'' if n == 1 else 's'}** since November 2000, in about {km2:,.0f} km².")
+    if t in c.index:
+        st.markdown(f"#### {sentence(t, c.loc[t])}")
+    st.plotly_chart(charts.calendar(c, colour, t, years, top=max(c["index"].max(), 10)), config={"displayModeBar": False})
+    st.caption("Index = hotspots per satellite per 30 days, in VIIRS units, for the circled region only. The "
+               "darkest colour is this region's own busiest month, so its colours cannot be compared with the "
+               "main calendar's. A small region has few hotspots, so many of its months cannot be ranked. Close "
+               "this and circle again to look at another region.")
 
 
 def pick_months(first, last):
@@ -145,7 +176,7 @@ with st.sidebar:
         bbox = (south, west, north, east)
     else:
         bbox = PRESETS[area]
-    st.caption("Or drag a box on the Map tab.")
+    st.caption("Or use Box Select on the Map tab's map.")
 
     st.header("Month in focus")
     left, right = st.columns(2)
@@ -155,8 +186,8 @@ with st.sidebar:
 
     st.header("Calendar")
     years = st.slider("Years shown", 2000, latest.year, (2000, latest.year))
-    view = st.radio("Colour by", ["index", "class"],
-                    format_func={"index": "Hotspot activity", "class": "Compared with normal"}.get)
+    colour = st.radio("Colour by", ["index", "class"],
+                      format_func={"index": "Hotspot activity", "class": "Compared with normal"}.get)
     st.caption(f"Data: NASA FIRMS, MODIS and VIIRS 375 m, to {end:%d %B %Y}.")
 
 if bbox[0] >= bbox[2] or bbox[1] >= bbox[3]:
@@ -198,7 +229,7 @@ calendar_tab, season_tab, map_tab, method_tab, download_tab = st.tabs(
     ["Calendar", "Season and daily", "Map", "Method", "Download"], key="tabs")   # the key keeps the open tab open
 
 with calendar_tab:
-    st.plotly_chart(charts.calendar(c, view, t, years), key="calendar", on_select=pick_month, selection_mode="points",
+    st.plotly_chart(charts.calendar(c, colour, t, years), key="calendar", on_select=pick_month, selection_mode="points",
                     config={"displayModeBar": False})
     st.caption("Index = hotspots per satellite per 30 days, in VIIRS units. "
                "\"Compared with normal\" ranks each month against the same month in other years.")
@@ -259,14 +290,21 @@ with map_tab:
         points = points[points.day.between(start, stop)]
         sample = " (a sample of 20,000)" if len(points) > 20000 else ""
         title = f"Hotspots from {start:%d %b %Y} to {stop:%d %b %Y}{sample}"
-        stage.plotly_chart(charts.hotspot_map(points, bbox, title), key="map", on_select=pick_area, selection_mode="box")
-        st.caption("Drag a box on the map to zoom in to a smaller area. For a wider view, pick another area in the "
-                   "sidebar. VIIRS has smaller pixels than MODIS, so it draws many more dots for the same fire.")
+        stage.caption("Scroll to zoom in. **Circle a region** with the mouse to open its burning calendar.")
+        stage.plotly_chart(charts.hotspot_map(points, bbox, title), key="map", on_select=pick_on_map,
+                           selection_mode=("lasso", "box"), config={"scrollZoom": True})
+        if st.session_state.pop("open_region", False):
+            region_calendar(st.session_state.region, t, colour, years)
+        st.caption("The circled region's calendar counts every hotspot inside the line since 2000, whatever period "
+                   "is shown. Double-click the map to zoom back out. To make a rectangle the app's area, pick Box "
+                   "Select in the map's toolbar and drag. VIIRS has smaller pixels than MODIS, so it draws many "
+                   "more dots for the same fire.")
     elif view == "Timelapse":
-        stage.plotly_chart(timelapse_figure(bbox, start, stop), config={"displayModeBar": False})
-        st.caption("Press Play. Coloured dots are the hotspots of each step, and grey dots the three steps before. "
-                   "Busy steps show a sample of the dots; the title counts every hotspot. VIIRS draws many more "
-                   "dots than MODIS for the same fire.")
+        stage.plotly_chart(timelapse_figure(bbox, start, stop), config={"displayModeBar": False, "scrollZoom": True})
+        st.caption("Press Play. Scroll to zoom in, drag to move, and double-click to zoom back out. Coloured dots "
+                   "are the hotspots of each step, and grey dots the three steps before. Busy steps show a sample "
+                   "of the dots; the title counts every hotspot. VIIRS draws many more dots than MODIS for the "
+                   "same fire.")
     else:
         page = columns_page(bbox, start, stop, cell_km, add_up, 50 if orbit else 0)
         if page is None:

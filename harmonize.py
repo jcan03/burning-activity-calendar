@@ -69,6 +69,17 @@ def in_box(rows, bbox):
     return rows[rows.lat.between(south, north) & rows.lon.between(west, east)]
 
 
+def in_shape(rows, shape):
+    """Rows inside a closed outline drawn on the map: a list of (lon, lat) corners."""
+    lon, lat = np.array(shape).T
+    rows = in_box(rows, (lat.min(), lon.min(), lat.max(), lon.max()))
+    x, y, inside = rows.lon.to_numpy(), rows.lat.to_numpy(), np.zeros(len(rows), bool)
+    for x0, y0, x1, y1 in zip(lon, lat, np.roll(lon, -1), np.roll(lat, -1)):
+        if y0 != y1:    # a point is inside if a line going east from it crosses the outline an odd number of times
+            inside ^= ((y0 > y) != (y1 > y)) & (x < x0 + (x1 - x0) * (y - y0) / (y1 - y0))
+    return rows[inside]
+
+
 def satellites_flying(end):
     """Number of satellites of each family in service on each day, outages removed."""
     days = pd.date_range("2000-11-01", end)
@@ -79,10 +90,14 @@ def satellites_flying(end):
     return pd.DataFrame({"sats_modis": flying[MODIS].sum(axis=1), "sats_viirs": flying[VIIRS].sum(axis=1)})
 
 
-def daily(rows, bbox):
-    """One row per day: hotspot counts and satellites flying for each family, plus an nrt flag."""
+def daily(rows, bbox, shape=None):
+    """One row per day: hotspot counts and satellites flying for each family, plus an nrt flag.
+
+    Counts the hotspots in the box, or inside `shape` (see in_shape) when one is given.
+    """
     flying = satellites_flying(rows.day.max())
-    counts = in_box(rows, bbox).groupby(["day", "sat"], observed=True).size().unstack(fill_value=0)
+    inside = in_box(rows, bbox) if shape is None else in_shape(rows, shape)
+    counts = inside.groupby(["day", "sat"], observed=True).size().unstack(fill_value=0)
     counts = counts.reindex(index=flying.index, columns=MODIS + VIIRS, fill_value=0)
     return pd.DataFrame({
         "count_modis": counts[MODIS].sum(axis=1), "count_viirs": counts[VIIRS].sum(axis=1),

@@ -120,7 +120,8 @@ def timelapse(points, bbox, start, stop, max_dots=1000):
     # Scattergl only repaints when the whole frame is redrawn. Long runs of frames play faster.
     go_to = dict(frame=dict(duration=150 if n <= 80 else 80, redraw=True), transition=dict(duration=0), mode="immediate")
     fig.update_layout(
-        title=fig.frames[0].layout.title, height=700, margin=dict(l=10, r=10, t=50, b=70), dragmode=False,
+        title=fig.frames[0].layout.title, height=700, margin=dict(l=10, r=10, t=50, b=70), dragmode="pan",
+        uirevision=str(bbox),      # keep the zoom while it plays and when the period changes
         legend=dict(orientation="h", y=1.02, x=1, xanchor="right"),
         updatemenus=[dict(type="buttons", direction="left", x=0, y=-0.1, xanchor="left", yanchor="top", showactive=False,
                           buttons=[dict(label="Play", method="animate", args=[None, go_to]),
