@@ -26,6 +26,7 @@ PRESETS = {  # south, west, north, east. The first is what the app opens on.
 }
 MONTH_NAMES = pd.date_range("2025-01-01", periods=12, freq="MS").strftime("%B").tolist()
 FIRST = pd.Timestamp("2000-11-01")  # first day of the record
+TALL_3D = 440  # pixels: short enough that the period controls under the 3D view fit on a laptop screen with it
 
 
 @st.cache_resource(show_spinner="Loading hotspots...")
@@ -50,14 +51,15 @@ def weighted():
     return rows().assign(w=h.weights(rows(), factor()[0]))
 
 
-@st.cache_data(max_entries=8, show_spinner="Building the timelapse...")
+# No spinners on these two: a spinner would take the view's place and make the period controls under it jump.
+@st.cache_data(max_entries=8, show_spinner=False)
 def timelapse_figure(bbox, start, stop):
     return animations.timelapse(rows(), bbox, start, stop)
 
 
-@st.cache_data(max_entries=4, show_spinner="Building the 3D view...")
+@st.cache_data(max_entries=4, show_spinner=False)
 def columns_page(bbox, start, stop, cell_km, add_up, orbit):
-    return animations.columns_3d(weighted(), bbox, start, stop, cell_km, add_up, orbit)
+    return animations.columns_3d(weighted(), bbox, start, stop, cell_km, add_up, orbit, height=TALL_3D)
 
 
 def ordinal(n):
@@ -108,6 +110,14 @@ def pick_months(first, last):
     """Quick pick: move the period slider to these months, kept inside the record."""
     record = pd.period_range(FIRST, rows().day.max(), freq="M")
     st.session_state.months = (min(max(first, record[0]), record[-1]), max(min(last, record[-1]), record[0]))
+
+
+def pick_period():
+    """Timeline click: use the year or month that was clicked as the period."""
+    points = st.session_state.timeline["selection"]["points"]
+    if points and "customdata" in points[0]:
+        months = points[0]["customdata"]
+        pick_months(*(pd.Period(m, "M") for m in (months[0] if isinstance(months, list) else months).split()))
 
 
 if not h.DB.exists():
@@ -213,48 +223,57 @@ with season_tab:
                    "disagree, and a few days usually hold most of a month's hotspots.")
 
 with map_tab:
-    # The period: the whole record to start with. Quick picks and the slider both set it, month by month.
+    # The view is on top and the period under it, so both are on screen while the period is changed.
     record = pd.period_range(FIRST, end, freq="M")
-    picks = {"Whole record": (record[0], record[-1]), f"All of {year}": (pd.Period(f"{year}-01"), pd.Period(f"{year}-12")),
-             f"June to September {year}": (pd.Period(f"{year}-06"), pd.Period(f"{year}-09")), charts.month_name(t): (t, t)}
-    for column, (label, span) in zip(st.columns(len(picks)), picks.items()):
-        column.button(label, on_click=pick_months, args=span, width="stretch",
-                      disabled=span[1] < record[0] or span[0] > record[-1])
+    bar = st.columns([2.2, 1.4, 2, 1.7], vertical_alignment="center")
+    view = bar[0].radio("View", ["Map", "Timelapse", "3D"], horizontal=True, label_visibility="collapsed")
+    if view == "3D":
+        wide = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) > 1.5
+        cell_km = bar[1].selectbox("Square size", [2, 5, 10], index=1 if wide else 0, label_visibility="collapsed",
+                                   format_func=lambda km: f"{km} km squares")
+        add_up = bar[2].toggle("Add up through the period")
+        orbit = bar[3].toggle("Rotate while it plays")
+    # The 3D view keeps its height even with nothing to show, so the controls under it stay where they are.
+    stage = st.container(height=TALL_3D + 16 if view == "3D" else "content", border=False)
+
+    # The period: the whole record to start with. The timeline, the slider and the buttons all set it, month by month.
     timeline = st.container()   # drawn above the slider, but it needs the slider's months
     first, last = st.select_slider("Period", record, (record[0], record[-1]), key="months",
                                    format_func=lambda m: m.strftime("%b %Y"), label_visibility="collapsed")
     start, stop = max(first.start_time, FIRST), min(last.end_time.normalize(), end)
-    timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), config={"displayModeBar": False})
+    timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), key="timeline", on_select=pick_period,
+                          selection_mode="points", config={"displayModeBar": False})
+    shown = start.year if start.year == stop.year else year     # the buttons follow the year the timeline is zoomed to
+    picks = {"Whole record": (record[0], record[-1]), f"All of {shown}": (pd.Period(f"{shown}-01"), pd.Period(f"{shown}-12")),
+             f"June to September {shown}": (pd.Period(f"{shown}-06"), pd.Period(f"{shown}-09")), charts.month_name(t): (t, t)}
+    for column, (label, span) in zip(st.columns(len(picks)), picks.items()):
+        column.button(label, on_click=pick_months, args=span, width="stretch",
+                      disabled=span[1] < record[0] or span[0] > record[-1])
     n = h.in_box(rows(), bbox).day.between(start, stop).sum()
     st.caption(f"**{n:,} hotspot{'' if n == 1 else 's'}** in this area from {start:%d %b %Y} to {stop:%d %b %Y}. "
-               "Drag the two ends of the slider, or use a button above, to choose the period.")
+               "Click a year on the chart to zoom in to it, then click a month. For any other period, drag the "
+               "ends of the slider or use a button.")
 
-    view = st.radio("View", ["Map", "Timelapse", "3D"], horizontal=True, label_visibility="collapsed")
     if view == "Map":
         points = h.in_box(rows(), bbox)
         points = points[points.day.between(start, stop)]
         sample = " (a sample of 20,000)" if len(points) > 20000 else ""
         title = f"Hotspots from {start:%d %b %Y} to {stop:%d %b %Y}{sample}"
-        st.plotly_chart(charts.hotspot_map(points, bbox, title), key="map", on_select=pick_area, selection_mode="box")
+        stage.plotly_chart(charts.hotspot_map(points, bbox, title), key="map", on_select=pick_area, selection_mode="box")
         st.caption("Drag a box on the map to zoom in to a smaller area. For a wider view, pick another area in the "
                    "sidebar. VIIRS has smaller pixels than MODIS, so it draws many more dots for the same fire.")
     elif view == "Timelapse":
-        st.plotly_chart(timelapse_figure(bbox, start, stop), config={"displayModeBar": False})
+        stage.plotly_chart(timelapse_figure(bbox, start, stop), config={"displayModeBar": False})
         st.caption("Press Play. Coloured dots are the hotspots of each step, and grey dots the three steps before. "
                    "Busy steps show a sample of the dots; the title counts every hotspot. VIIRS draws many more "
                    "dots than MODIS for the same fire.")
     else:
-        wide = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) > 1.5
-        left, middle, right = st.columns([1, 1.5, 2])
-        cell_km = left.selectbox("Square size", [2, 5, 10], index=1 if wide else 0, format_func=lambda km: f"{km} km")
-        add_up = middle.toggle("Add up through the period")
-        orbit = right.toggle("Rotate while it plays")
         page = columns_page(bbox, start, stop, cell_km, add_up, 50 if orbit else 0)
         if page is None:
-            st.info("No hotspots in this area and period.")
+            stage.info("No hotspots in this area and period.")
         else:
             html, top, cell_km, stretch = page
-            st.iframe(html, height=640)
+            stage.iframe(html, height=TALL_3D)
             what = ("Columns add up through the period, so they only rise" if add_up else
                     "Columns show the burning at each step, so they rise when a fire starts and drop when it is out")
             st.caption(f"Press Play. {what}. Pause to rotate by dragging; scroll to zoom. Each column is a {cell_km} km square. "

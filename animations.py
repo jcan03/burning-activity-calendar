@@ -25,14 +25,34 @@ FACES = np.array([[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 
 
 
 def timeline(index, start, stop):
-    """Weekly activity across the whole record, with the chosen period shaded."""
-    s = index.fillna(0).resample("W").mean()
-    fig = go.Figure(go.Bar(x=s.index, y=s.values, marker=dict(color=MUTED),
-                           hovertemplate="Week to %{x|%d %b %Y}: %{y:,.0f} hotspots per satellite a day<extra></extra>"))
+    """Activity through time with the chosen period shaded, as a picker that zooms in.
+
+    A period longer than one year shows the whole record week by week, and a click picks a year.
+    A period inside one year shows that year day by day, and a click picks a month. Each thing that
+    can be clicked carries its first and last month as customdata, such as "2021-01 2021-12".
+    """
+    if start.year == stop.year:
+        s = index[str(start.year)].fillna(0)
+        spans = pd.period_range(s.index[0], s.index[-1], freq="M")
+        months, hints = spans.astype(str) + " " + spans.astype(str), spans.strftime("%B %Y: click to show it")
+        axis = dict(range=[f"{start.year}-01-01", f"{start.year + 1}-01-01"], dtick="M1", tickformat="%b")
+    else:
+        s = index.fillna(0).resample("W").mean()
+        spans = pd.period_range(index.index[0], index.index[-1], freq="Y")
+        months, hints = [f"{y}-01 {y}-12" for y in spans.year], spans.strftime("%Y: click to zoom in")
+        axis = dict(range=[index.index[0], index.index[-1] + pd.Timedelta(days=1)])
+    fig = go.Figure(go.Bar(x=s.index, y=s.values, marker=dict(color=MUTED), hoverinfo="skip",
+                           unselected=dict(marker=dict(opacity=1))))
+    # One invisible bar over each year or month takes the click.
+    hidden = dict(marker=dict(opacity=0))
+    fig.add_bar(x=spans.start_time, y=[s.max() or 1] * len(spans), offset=0, customdata=months, hovertext=hints,
+                width=(spans.end_time - spans.start_time).total_seconds() * 1000, hoverinfo="text",
+                selected=hidden, unselected=hidden, **hidden)
     fig.add_vrect(x0=start, x1=stop + pd.Timedelta(days=1), fillcolor=VIIRS_COLOR, opacity=0.25, line_width=0)
-    fig.update_xaxes(range=[index.index[0], index.index[-1] + pd.Timedelta(days=1)], fixedrange=True)
+    fig.update_xaxes(fixedrange=True, **axis)
     fig.update_yaxes(visible=False, fixedrange=True)
-    fig.update_layout(height=110, margin=dict(l=10, r=10, t=5, b=5), bargap=0, dragmode=False)
+    fig.update_layout(height=110, margin=dict(l=10, r=10, t=5, b=5), bargap=0, barmode="overlay", dragmode=False,
+                      clickmode="event+select", showlegend=False)
     return fig
 
 
@@ -254,12 +274,14 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     fig.add_scatter3d(x=city_x, y=city_y, z=ground_at(city_x, city_y) + 0.02 * tallest,
                       mode="markers+text", text=list(cities), textposition="top center", hoverinfo="skip",
                       marker=dict(size=3, color=INK), textfont=dict(size=12, color=INK))
-    eye = dict(x=0.1, y=-1.25, z=0.7)
+    eye = dict(x=0.09, y=-1.1, z=0.62)
     ceiling = ground.max() + tallest * 1.05
     fig.update_layout(
         height=height - 46, margin=dict(l=0, r=0, t=0, b=0), showlegend=False,
-        scene=dict(aspectmode="manual", aspectratio=dict(x=1, y=tall / wide, z=0.4 * (ceiling - bottom) / (tallest * 1.05)),
-                   camera=dict(eye=eye, center=dict(x=0, y=0, z=-0.25)),   # look below the middle: columns sit on the ground
+        # The longer side is 1 whatever the area's shape, so a tall area does not run off the bottom of the view.
+        scene=dict(aspectmode="manual", aspectratio=dict(x=wide / max(wide, tall), y=tall / max(wide, tall),
+                                                         z=0.4 * (ceiling - bottom) / (tallest * 1.05)),
+                   camera=dict(eye=eye, center=dict(x=0, y=0, z=-0.2)),    # look below the middle: columns sit on the ground
                    xaxis=dict(visible=False, range=[0, wide]), yaxis=dict(visible=False, range=[0, tall]),
                    zaxis=dict(visible=False, range=[bottom, ceiling])))
     # For each frame, only the squares that are burning: [square, height, square, height, ...].

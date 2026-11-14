@@ -182,6 +182,14 @@ class Animations(WithData):
         self.assertEqual(len(labels), len(pd.period_range(FIRST, self.end, freq="M")))
         self.assertEqual(labels[frame[days == T("2021-07-15")].iloc[0]], "July 2021")
 
+    def test_timeline_zooms_from_years_to_months(self):
+        index = h.daily_index(self.daily, self.k)
+        years = animations.timeline(index, FIRST, self.end).data[1]             # the layer that takes the click
+        self.assertEqual((years.customdata[0], years.customdata[-1]), ("2000-01 2000-12", f"{self.end.year}-01 {self.end.year}-12"))
+        for start, stop in [("2021-01-01", "2021-12-31"), ("2021-07-01", "2021-07-31")]:    # a month shown: the year stays up
+            months = animations.timeline(index, T(start), T(stop)).data[1]
+            self.assertEqual(list(months.customdata), [f"2021-{m:02d} 2021-{m:02d}" for m in range(1, 13)])
+
     def test_timelapse_counts_every_hotspot(self):
         for bbox, (start, stop) in [(KAMLOOPS, SUMMER_2021), (h.BOX, (FIRST, self.end)), (EMPTY, SUMMER_2021)]:
             fig = animations.timelapse(self.rows, bbox, start, stop)
@@ -323,6 +331,14 @@ class App(unittest.TestCase):
         disabled = {b.label: b.disabled for b in at.button}
         self.assertTrue(disabled["June to September 2000"] and disabled["March 2000"])
         self.assertFalse(disabled["All of 2000"] or disabled["Whole record"])
+
+    def test_buttons_follow_the_year_the_timeline_is_zoomed_to(self):
+        at = self.run_app()
+        self.assertIn(f"All of {h.load_rows().day.max().year}", [b.label for b in at.button])   # the year in focus
+        at.select_slider(key="months").set_range(pd.Period("2021-03"), pd.Period("2021-05"))
+        at.run()
+        self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
+        self.assertIn("All of 2021", [b.label for b in at.button])
 
     def test_a_month_outside_the_record_says_so(self):
         at = self.choose(self.run_app(), year=2000, month=3)
