@@ -21,6 +21,7 @@ LOW, HIGH = 200, 2800  # metres at the first and last land colour
 GROUND_PIXELS = 180    # cells along the longer side of the 3D ground; more is sharper but slower to play
 RELIEF = 0.04          # the ground's highest point stands this share of the area's width above its lowest
 SCAR = 100             # a burnt patch gets a burn-scar outline once its activity in 12 months adds up to this
+TIMELINE = "timeline"  # marks the period timeline's chart, so the 3D page's script can find it to put its playhead on
 # Corner offsets of a column (four at the base, four at the top) and the 12 triangles that close it.
 CORNER_X, CORNER_Y = np.array([-1, 1, 1, -1, -1, 1, 1, -1]), np.array([-1, -1, 1, 1, -1, -1, 1, 1])
 FACES = np.array([[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4],
@@ -55,7 +56,7 @@ def timeline(index, start, stop):
     fig.update_xaxes(fixedrange=True, **axis)
     fig.update_yaxes(visible=False, fixedrange=True)
     fig.update_layout(height=110, margin=dict(l=10, r=10, t=5, b=5), bargap=0, barmode="overlay", dragmode=False,
-                      clickmode="event+select", showlegend=False)
+                      clickmode="event+select", showlegend=False, meta=TIMELINE)
     return fig
 
 
@@ -81,10 +82,68 @@ def steps(day, start, stop, most=125):
     return (day.dt.year - start.year) * 12 + day.dt.month - start.month, [m.strftime("%B %Y") for m in months]
 
 
-def timelapse(points, bbox, start, stop, max_dots=1000):
+def middles(start, stop):
+    """The middle of each frame's days (see `steps`): where a playhead stands on the timeline at that frame."""
+    days = pd.Series(pd.date_range(start, stop))
+    days = days.groupby(steps(days, start, stop)[0].to_numpy())
+    return (days.min() + (days.max() - days.min()) / 2).tolist()
+
+
+def burn_scars(p, frame_of, n, keep, bbox):
+    """For each frame, the outline of the big burnt patches: longitudes and latitudes, with a gap between lines.
+
+    The 3D view's rule (see `scars` in PLAYER): a patch is squares that touch (corners count) and burned in
+    this frame or the `keep` - 1 before it, and it is big when its activity in that time adds up to SCAR.
+    The squares are the size the 3D view opens with: 2 km, or 5 km in an area wider than 1.5 degrees.
+    `p` needs the weight column `w`, and `frame_of` gives the frame of each of its rows.
+    """
+    south, west, north, east = bbox
+    cell_km = 5 if max(north - south, east - west) > 1.5 else 2
+    km_east = 111.2 * np.cos(np.radians((south + north) / 2))
+    wide, tall = (east - west) * km_east, (north - south) * 111.2
+    rows, cols = int(tall // cell_km) + 1, int(wide // cell_km) + 1
+    # Activity of each square in each frame, inside a ring of empty squares so that every square has eight neighbours.
+    activity = np.zeros((n, rows + 2, cols + 2))
+    np.add.at(activity, (frame_of, ((p.lat.to_numpy() - south) * 111.2 // cell_km).astype(int) + 1,
+                         ((p.lon.to_numpy() - west) * km_east // cell_km).astype(int) + 1), p.w.to_numpy())
+    activity = activity.cumsum(axis=0)
+    activity[keep:] -= activity[:-keep].copy()          # now what burned in the last `keep` frames
+    burned = activity > 1e-6
+    # Number the patches: each square takes the highest number among its neighbours until nothing changes.
+    patch = np.where(burned, np.arange(1, burned.size + 1, dtype=np.int32).reshape(burned.shape), 0)
+    inside = patch[:, 1:-1, 1:-1]
+    around = [patch[:, 1 + i:rows + 1 + i, 1 + j:cols + 1 + j] for i in (-1, 0, 1) for j in (-1, 0, 1)]
+    while True:
+        highest = inside.copy()
+        for neighbour in around:
+            np.maximum(highest, neighbour, out=highest)
+        highest[~burned[:, 1:-1, 1:-1]] = 0
+        if (highest == inside).all():
+            break
+        inside[:] = highest
+    big = burned & (np.bincount(patch.ravel(), weights=activity.ravel())[patch] >= SCAR)
+    # Only the sides of a big patch's squares that face other ground: [frame, south, west, north, east] of each side.
+    sides = []
+    for i, j, a, b in [(0, -1, (0, 0), (1, 0)), (0, 1, (0, 1), (1, 1)), (-1, 0, (0, 0), (0, 1)), (1, 0, (1, 0), (1, 1))]:
+        f, row, col = np.nonzero(big[:, 1:-1, 1:-1] & ~big[:, 1 + i:rows + 1 + i, 1 + j:cols + 1 + j])
+        sides.append((f, row + a[0], col + a[1], row + b[0], col + b[1]))
+    f, y0, x0, y1, x1 = np.concatenate(sides, axis=1)
+    order = np.argsort(f, kind="stable")
+    gap = np.full(len(f), np.nan)
+    lon = np.column_stack([west + np.minimum(x0 * cell_km, wide) / km_east, west + np.minimum(x1 * cell_km, wide) / km_east, gap])
+    lat = np.column_stack([south + np.minimum(y0 * cell_km, tall) / 111.2, south + np.minimum(y1 * cell_km, tall) / 111.2, gap])
+    lon, lat = lon[order].astype(np.float32).round(4), lat[order].astype(np.float32).round(4)
+    ends = np.searchsorted(f[order], np.arange(n + 1))
+    return [(lon[a:b].ravel(), lat[a:b].ravel()) for a, b in zip(ends, ends[1:])]
+
+
+def timelapse(points, bbox, start, stop, index, max_dots=1000):
     """Animated map of the area: each step's hotspots in colour over a grey trail of the three steps before.
 
-    Dots are a sample of at most `max_dots` per step; the title counts every hotspot.
+    Dots are a sample of at most `max_dots` per step; the title counts every hotspot. A line stays for 12
+    months around each big burnt patch (see `burn_scars`), so `points` needs the weight column `w`.
+    Under the map is the period timeline of the daily `index` (see `timeline`), with a playhead: a line
+    that every step moves to the middle of its days.
     """
     p = in_box(points, bbox)
     p = p[(p.day >= start) & (p.day <= stop)]
@@ -95,6 +154,10 @@ def timelapse(points, bbox, start, stop, max_dots=1000):
     for f, g in p.groupby(frame_of):
         g = g.sample(max_dots, random_state=0) if len(g) > max_dots else g
         sample[f] = g.lon.to_numpy(np.float32).round(3), g.lat.to_numpy(np.float32).round(3), g.sat.isin(MODIS).to_numpy()
+    burning = (p.w > 0).to_numpy()
+    keep = max(1, round(n * 365 / ((stop - start).days + 1)))    # how many frames make 12 months
+    scars = burn_scars(p[burning], frame_of[burning], n, keep, bbox)
+    middle = middles(start, stop)
 
     def dots(frames, modis=None):
         """The sampled dots of these frames: every sensor, or only MODIS (True) or VIIRS (False)."""
@@ -105,32 +168,60 @@ def timelapse(points, bbox, start, stop, max_dots=1000):
         keep = slice(None) if modis is None else is_modis == modis
         return dict(x=lon[keep], y=lat[keep])
 
-    def frame(f):
-        title = f"<b>{labels[f]}</b>: {counts[f]:,} hotspot{'' if counts[f] == 1 else 's'}, {counts[:f + 1].sum():,} so far"
-        return go.Frame(name=labels[f], traces=[0, 1, 2], layout=dict(title=dict(text=title)),
-                        data=[dots(range(max(f - 3, 0), f)), dots([f], False), dots([f], True)])
-
     fig = go.Figure()
     layers = [("Three steps before", MUTED, 4, 0.4), ("VIIRS", VIIRS_COLOR, 6, 0.85), ("MODIS", MODIS_COLOR, 6, 0.85)]
-    for name, color, size, opacity in layers:   # the three traces that every frame redraws
+    for name, color, size, opacity in layers:   # the dots that every frame redraws
         fig.add_scattergl(mode="markers", showlegend=False, hoverinfo="skip", marker=dict(size=size, color=color, opacity=opacity))
+    scar = dict(mode="lines", line=dict(color=INK, width=1.5))
+    fig.add_scattergl(showlegend=False, hoverinfo="skip", **scar)   # the burn-scar outline, redrawn by every frame too
     for name, color, size, opacity in layers:   # legend entries that stay put when a frame has no dots
         fig.add_scatter(x=[None], y=[None], mode="markers", name=name, marker=dict(size=8, color=color))
-    fig.frames = [frame(f) for f in range(n)]
-    for trace, first in zip(fig.data, fig.frames[0].data):
-        trace.x, trace.y = first.x, first.y
+    fig.add_scatter(x=[None], y=[None], name="Burnt in the last 12 months", **scar)
     map_frame(fig, bbox)
+    # The timeline goes under the map on axes of its own, with the Play buttons and the slider between the two.
+    strip = timeline(index, start, stop)
+    bars, clicks = strip.data
+    # Its bars are drawn as one filled shape: plotly.js draws every bar again at every step, which halves the speed.
+    fig.add_scatter(x=bars.x, y=bars.y, mode="lines", line=dict(width=0, shape="hvh"), fill="tozeroy", fillcolor=MUTED,
+                    xaxis="x2", yaxis="y2", showlegend=False, hoverinfo="skip")
+    fig.add_trace(clicks.update(xaxis="x2", yaxis="y2", showlegend=False))
+    fig.add_shape(strip.layout.shapes[0].update(xref="x2", yref="y2 domain"))
+    top = clicks.y[0] * 1.2                     # above the tallest bar, so the playhead's handle is clear of the bars
+    # The playhead: a line with a handle on top, as in a video editor. A click on the timeline must not dim it.
+    fig.add_scatter(mode="lines+markers", line=dict(color=INK, width=2), xaxis="x2", yaxis="y2", showlegend=False,
+                    hoverinfo="skip", cliponaxis=False, unselected=dict(marker=dict(opacity=1)),
+                    marker=dict(symbol="triangle-down", size=[0, 12], color=INK, opacity=1, line=dict(width=0)))
+    # Every frame redraws the dots, the outline and the playhead, which is last. It also names the layer that takes
+    # the click, unchanged: plotly.js takes away the bars that a frame leaves out for as long as the timelapse plays.
+    redrawn = [0, 1, 2, 3, len(fig.data) - 2, len(fig.data) - 1]
+
+    def frame(f):
+        title = f"<b>{labels[f]}</b>: {counts[f]:,} hotspot{'' if counts[f] == 1 else 's'}, {counts[:f + 1].sum():,} so far"
+        return go.Frame(name=labels[f], traces=redrawn, layout=dict(title=dict(text=title)),
+                        data=[dots(range(max(f - 3, 0), f)), dots([f], False), dots([f], True),
+                              dict(x=scars[f][0], y=scars[f][1]), dict(type="bar"), dict(x=[middle[f]] * 2, y=[0, top])])
+
+    fig.frames = [frame(f) for f in range(n)]
+    for i, first in zip(redrawn, fig.frames[0].data):
+        if first.x is not None:
+            fig.data[i].update(x=first.x, y=first.y)
     # Scattergl only repaints when the whole frame is redrawn. Long runs of frames play faster.
     go_to = dict(frame=dict(duration=150 if n <= 80 else 80, redraw=True), transition=dict(duration=0), mode="immediate")
+    # Pixels, top to bottom: the map, its axis labels, the controls, the timeline. The rest is margin.
+    below = np.cumsum([90, 110, 60]) / (90 + 110 + 60 + 560)   # the top of the timeline, of the controls and of the labels
     fig.update_layout(
-        title=fig.frames[0].layout.title, height=700, margin=dict(l=10, r=10, t=50, b=70), dragmode="pan",
+        title=fig.frames[0].layout.title, height=900, margin=dict(l=10, r=10, t=50, b=30), dragmode="pan",
         uirevision=str(bbox),      # keep the zoom while it plays and when the period changes
         legend=dict(orientation="h", y=1.02, x=1, xanchor="right"),
-        updatemenus=[dict(type="buttons", direction="left", x=0, y=-0.1, xanchor="left", yanchor="top", showactive=False,
+        yaxis=dict(domain=[below[2], 1]),
+        xaxis2=dict(strip.layout.xaxis.to_plotly_json(), anchor="y2"),
+        yaxis2=dict(visible=False, fixedrange=True, anchor="x2", domain=[0, below[0]], range=[0, top]),
+        bargap=0, barmode="overlay", clickmode="event+select",
+        updatemenus=[dict(type="buttons", direction="left", x=0, y=below[1], xanchor="left", yanchor="top", showactive=False,
                           buttons=[dict(label="Play", method="animate", args=[None, go_to]),
                                    dict(label="Pause", method="animate", args=[[None], go_to]),
                                    dict(label="Resume", method="animate", args=[None, dict(go_to, fromcurrent=True)])])],
-        sliders=[dict(x=0.22, len=0.78, y=-0.1, yanchor="top", currentvalue=dict(visible=False),
+        sliders=[dict(x=0.22, len=0.78, y=below[1], yanchor="top", currentvalue=dict(visible=False),
                       steps=[dict(label=name.split(" to ")[0] if i % -(-n // 8) == 0 else "", method="animate", args=[[name], go_to])
                              for i, name in enumerate(labels)])])
     return fig
@@ -156,6 +247,29 @@ function groundAt(x, y) {   // height of the ground at a place, between its four
   const g = (a, b) => D.ground[b * D.across + a];
   return (g(i, j) * (1 - u) + g(i + 1, j) * u) * (1 - v) + (g(i, j + 1) * (1 - u) + g(i + 1, j + 1) * u) * v;
 }
+// The playhead: a line with a handle on the period timeline, as in the timelapse. That chart is on the app's page,
+// outside this frame, and the app draws it again when the period changes, so the line is put back every 300 ms.
+// If the app's page cannot be reached there is no playhead, and the rest still plays.
+let head = null;
+function playhead() {
+  try {
+    const chart = [...parent.document.querySelectorAll('.js-plotly-plot')].find(g => g.layout && g.layout.meta === '__TIMELINE__');
+    const box = chart.querySelector('.svg-container'), across = chart._fullLayout.xaxis, up = chart._fullLayout.yaxis;
+    head = box.querySelector('.playhead');
+    if (!head) {
+      head = parent.document.createElement('div');
+      head.className = 'playhead';
+      head.style.cssText = 'position:absolute;width:2px;margin-left:-1px;background:__INK__;pointer-events:none';
+      head.innerHTML = '<div style="position:absolute;left:-5px;top:0;border:6px solid transparent;border-top:10px solid __INK__;border-bottom:0"></div>';
+      box.appendChild(head);
+    }
+    head.style.left = across._offset + across.l2p(D.at[+slider.value]) + 'px';
+    head.style.top = up._offset + 'px';
+    head.style.height = up._length + 'px';
+  } catch (e) {}
+}
+setInterval(playhead, 300);
+addEventListener('pagehide', () => { if (head) head.remove(); });   // or it would stay on the chart in the other views
 let scarred = null;   // the squares outlined at the moment
 function scars(f) {
   // Burn scars: a dark line laid on the ground around each big burnt patch, to show where a wildfire was.
@@ -208,6 +322,7 @@ function scars(f) {
 }
 function show(f) {
   slider.value = f; date.textContent = D.dates[f];
+  playhead();
   const x = [], y = [], z = [], colour = [], height = new Float32Array(D.x0.length), pairs = D.heights[f];
   for (let i = 0; i < pairs.length; i += 2) height[pairs[i]] = pairs[i + 1];   // only burning squares are listed
   D.x0.forEach((x0, c) => {
@@ -353,6 +468,7 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     # For each frame, only the squares that are burning: [square, height, square, height, ...].
     burning = [[v for c in np.flatnonzero(frame) for v in (int(c), float(frame[c]))] for frame in heights.T]
     data = dict(heights=burning, dates=labels, top=tallest, orbit=orbit, eye=eye, shown=shown,
+                at=[middle.value // 10 ** 6 for middle in middles(start, stop)],   # for the playhead: plotly's milliseconds
                 **{name: values.round(2).tolist() for name, values in dict(x0=x0, x1=x1, y0=y0, y1=y1, foot=foot, base=base).items()},
                 # For the burn scars: each square's place in the grid, and the ground to lay the lines on.
                 col=grid.index.get_level_values("col").tolist(), row=grid.index.get_level_values("row").tolist(),
@@ -362,5 +478,5 @@ def columns_3d(points, bbox, start, stop, cell_km, add_up=False, orbit=0, max_ce
     plot = fig.to_html(full_html=False, include_plotlyjs=True, div_id="plot", config={"displayModeBar": False})
     # The plot goes in last: it carries all of plotly.js, which must not be searched for the other markers.
     html = PLAYER.replace("__LAST__", str(n - 1)).replace("__DATA__", json.dumps(data, separators=(",", ":")))
-    html = html.replace("__PAGE__", PAGE).replace("__INK__", INK).replace("__ACCENT__", ACCENT)
+    html = html.replace("__PAGE__", PAGE).replace("__INK__", INK).replace("__ACCENT__", ACCENT).replace("__TIMELINE__", TIMELINE)
     return html.replace("__PLOT__", plot), top, cell_km, stretch
