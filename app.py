@@ -177,7 +177,7 @@ with st.sidebar:
         bbox = (south, west, north, east)
     else:
         bbox = PRESETS[area]
-    st.caption("Or use Box Select on the Map tab's map.")
+    st.caption("Or use Box Select on the Map tab's 2D Summary.")
 
     st.header("Month in focus")
     left, right = st.columns(2)
@@ -259,8 +259,8 @@ with season_tab:
 with map_tab:
     # The view is on top and the period under it, so both are on screen while the period is changed.
     record = pd.period_range(FIRST, end, freq="M")
-    bar = st.columns([2.2, 1.4, 2, 1.7], vertical_alignment="center")
-    view = bar[0].radio("View", ["Map", "Timelapse", "3D"], horizontal=True, label_visibility="collapsed")
+    bar = st.columns([3.2, 1.4, 2, 1.7], vertical_alignment="center")
+    view = bar[0].radio("View", ["3D", "2D Timelapse", "2D Summary"], horizontal=True, label_visibility="collapsed")
     if view == "3D":
         wide = max(bbox[2] - bbox[0], bbox[3] - bbox[1]) > 1.5
         cell_km = bar[1].selectbox("Square size", [1, 2, 5, 10], index=2 if wide else 1, label_visibility="collapsed",
@@ -275,7 +275,7 @@ with map_tab:
     first, last = st.select_slider("Period", record, (record[0], record[-1]), key="months",
                                    format_func=lambda m: m.strftime("%b %Y"), label_visibility="collapsed")
     start, stop = max(first.start_time, FIRST), min(last.end_time.normalize(), end)
-    if view != "Timelapse":     # the timelapse has the timeline in its own figure, so its playhead can move on it
+    if view != "2D Timelapse":  # the timelapse has the timeline in its own figure, so its playhead can move on it
         timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), key="timeline", on_select=pick_period,
                               selection_mode="points", config={"displayModeBar": False})
     shown = start.year if start.year == stop.year else year     # the buttons follow the year the timeline is zoomed to
@@ -289,7 +289,7 @@ with map_tab:
                "Click a year on the chart to zoom in to it, then click a month. For any other period, drag the "
                "ends of the slider or use a button.")
 
-    if view == "Map":
+    if view == "2D Summary":
         points = h.in_box(rows(), bbox)
         points = points[points.day.between(start, stop)]
         sample = " (a sample of 20,000)" if len(points) > 20000 else ""
@@ -303,7 +303,7 @@ with map_tab:
                    "is shown. Double-click the map to zoom back out. To make a rectangle the app's area, pick Box "
                    "Select in the map's toolbar and drag. VIIRS has smaller pixels than MODIS, so it draws many "
                    "more dots for the same fire.")
-    elif view == "Timelapse":
+    elif view == "2D Timelapse":
         stage.plotly_chart(timelapse_figure(bbox, start, stop), key="timeline", on_select=pick_period,
                            selection_mode="points", config={"displayModeBar": False, "scrollZoom": True})
         st.caption("Press Play. Scroll to zoom in, drag to move, and double-click to zoom back out. Coloured dots "
