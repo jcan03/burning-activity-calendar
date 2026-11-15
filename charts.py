@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from PIL import Image
 from plotly.subplots import make_subplots
 
-from harmonize import BASE_YEARS, BOX, MODIS, OVERLAP, SPLICE, daily_index
+from harmonize import BASE_YEARS, BOX, MODIS, OVERLAP, SPLICE, SUMMER, daily_index, summer_table
 
 # Both cover the data box, north row first, and come from download_basemap.py.
 BASEMAP = Path(__file__).parent / "data" / "basemap.jpg"   # shaded-relief picture for the flat maps
@@ -28,6 +28,7 @@ FIRE = ["#2a1814", "#8a1f10", "#d6470f", "#fb8c1e", "#ffd83d", "#fffbd6"]
 # Compared with normal: blue below and amber above a dark grey, brighter the further from normal.
 CLASS_COLORS = ["#6fb1ff", "#2f66a8", "#3a3a37", "#a85a14", "#ffb347"]
 UNRANKED = "#6b6a65"
+SUMMER_X = 13.5                                # where the calendar draws the summer squares: after December, with a gap
 VIIRS_COLOR, MODIS_COLOR = "#199e70", "#9085e9"   # the two sensors: green and violet, clear of the fire colours
 ACCENT = "#f29a2e"                                # whatever is selected or in focus
 MUTED, INK = "#8a8984", "#ece8e1"                 # context; text and outlines
@@ -129,14 +130,32 @@ def _hover(t, r):
     return "<br>".join(lines + [f"<i>{n}</i>" for n in flags(r)])
 
 
-def calendar(c, view, selected, years, top=60000):
-    """Year by month heatmap. view is 'class' or 'index'. Cells can be clicked (customdata = month).
+def _summer_hover(year, r):
+    lines = [f"<b>Summer {year}</b> (June to September)"]
+    if np.isnan(r["index"]):
+        return "<br>".join(lines + ["No rating: the summer is not complete"])
+    lines.append(f"Index: {r['index']:,.0f} hotspots per satellite per 30 days, on average")
+    if r.uncertain:
+        lines.append("Cannot be ranked: too many years tie")
+    elif not np.isnan(r.cls):
+        record = " (record)" if r.record else ""
+        lines.append(f"{CLASSES[int(r.cls)]}{record}: rank {r['rank']:.0f} of {r.n_years:.0f}")
+    notes = [note for flag, note in [(r.nrt, "includes provisional near-real-time data"),
+                                     (r.outage, "a satellite outage this summer"),
+                                     (r.modis_scaled, "scaled from MODIS, good to about a factor of 2")] if flag]
+    return "<br>".join(lines + [f"<i>{n}</i>" for n in notes])
 
-    `top` is the index that gets the darkest colour: the same for every area, so areas can be compared,
-    unless a small region is given its own.
+
+def calendar(c, view, selected, years, top=60000):
+    """Year by month heatmap, with a square for each summer as a whole. view is 'class' or 'index'.
+
+    Cells can be clicked (customdata = month; a summer square gives its busiest month). `top` is the index
+    that gets the darkest colour: the same for every area, so areas can be compared, unless a small
+    region is given its own.
     """
-    c = c[(c.index.year >= years[0]) & (c.index.year <= years[1])]
     yrs = list(range(years[0], years[1] + 1))
+    summers = summer_table(c).reindex(yrs)      # ranked against the whole record, so before the years are cut
+    c = c[(c.index.year >= years[0]) & (c.index.year <= years[1])]
     x, y = c.index.month, c.index.year
 
     def grid(values):
@@ -144,11 +163,11 @@ def calendar(c, view, selected, years, top=60000):
 
     fig = go.Figure()
     if view == "class":
-        z = grid(np.where(c.uncertain, 5, c.cls))
+        z, summer_z = grid(np.where(c.uncertain, 5, c.cls)), np.where(summers.uncertain.eq(True), 5, summers.cls)
         colors = CLASS_COLORS + [UNRANKED]
-        scale = [[b, col] for i, col in enumerate(colors) for b in (i / 6, (i + 1) / 6)]
-        fig.add_heatmap(z=z, x=list(range(1, 13)), y=yrs, colorscale=scale, zmin=-0.5, zmax=5.5,
-                        showscale=False, xgap=2, ygap=2, hoverinfo="skip")
+        look = dict(colorscale=[[b, col] for i, col in enumerate(colors) for b in (i / 6, (i + 1) / 6)], zmin=-0.5, zmax=5.5,
+                    xgap=2, ygap=2, hoverinfo="skip")
+        fig.add_heatmap(z=z, x=list(range(1, 13)), y=yrs, showscale=False, **look)
         for name, col in zip(CLASSES + ["Cannot be ranked"], colors):
             fig.add_scatter(x=[None], y=[None], mode="markers", name=name, marker=dict(symbol="square", size=12, color=col))
         s = c[c.record]
@@ -156,15 +175,20 @@ def calendar(c, view, selected, years, top=60000):
                         marker=dict(symbol="star", size=11, color="white", line=dict(color=PAGE, width=1.5)))
     else:
         ticks = [tick for tick in (0, 10, 100, 1000, 10000) if tick <= top]
-        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, zmin=0, zmax=np.log10(top + 1),
-                        colorscale=[[i / (len(FIRE) - 1), col] for i, col in enumerate(FIRE)], xgap=2, ygap=2, hoverinfo="skip",
+        summer_z = np.log10(summers["index"] + 1)
+        look = dict(colorscale=[[i / (len(FIRE) - 1), col] for i, col in enumerate(FIRE)], zmin=0, zmax=np.log10(top + 1),
+                    xgap=2, ygap=2, hoverinfo="skip")
+        fig.add_heatmap(z=np.log10(grid(c["index"]) + 1), x=list(range(1, 13)), y=yrs, **look,
                         colorbar=dict(title="Index", tickvals=np.log10(np.array(ticks) + 1),
                                       ticktext=[f"{t:,}" for t in ticks], len=0.5, thickness=12))
-    s = c[c.nrt]
-    fig.add_scatter(x=s.index.month - 0.3, y=s.index.year - 0.28, mode="markers", name="Provisional data", hoverinfo="skip",
-                    marker=dict(symbol="circle", size=6, color="white", line=dict(color=PAGE, width=1)))
+    fig.add_heatmap(z=np.asarray(summer_z, dtype=float).reshape(-1, 1), x0=SUMMER_X, dx=1, y=yrs, name="Summer",
+                    showscale=False, **look)
+    s, provisional = c[c.nrt], summers[summers.nrt.eq(True) & summers["index"].notna()]
+    fig.add_scatter(x=list(s.index.month - 0.3) + [SUMMER_X - 0.3] * len(provisional),
+                    y=list(s.index.year - 0.28) + list(provisional.index - 0.28), mode="markers", name="Provisional data",
+                    hoverinfo="skip", marker=dict(symbol="circle", size=6, color="white", line=dict(color=PAGE, width=1)))
     if years[0] <= SPLICE.year <= years[1]:
-        fig.add_scatter(x=[0.5, 1.5, 1.5, 12.5], y=[SPLICE.year + 0.5, SPLICE.year + 0.5, SPLICE.year - 0.5, SPLICE.year - 0.5],
+        fig.add_scatter(x=[0.5, 1.5, 1.5, SUMMER_X + 0.5], y=[SPLICE.year + 0.5, SPLICE.year + 0.5, SPLICE.year - 0.5, SPLICE.year - 0.5],
                         mode="lines", name="Above this line: scaled from MODIS", hoverinfo="skip",
                         line=dict(color=INK, width=1.5, dash="dot"))
     # Invisible markers on every cell carry the hover text and make the cell clickable.
@@ -174,11 +198,20 @@ def calendar(c, view, selected, years, top=60000):
                     hoverinfo="text",
                     marker=dict(size=20, opacity=0), selected=dict(marker=dict(opacity=0)),
                     unselected=dict(marker=dict(opacity=0)))
+    # The same for the summer squares. A click picks the summer's busiest month (June where there is none).
+    busiest = c["index"][c.index.month.isin(SUMMER)].dropna()
+    busiest = busiest.groupby(busiest.index.year).idxmax().astype(str).reindex(yrs)
+    fig.add_scatter(x=[SUMMER_X] * len(yrs), y=yrs, mode="markers", showlegend=False, hoverinfo="text",
+                    customdata=busiest.fillna(pd.Series({y: f"{y}-06" for y in yrs})),
+                    hovertext=[_summer_hover(y, r) if not pd.isna(r.n_years) else f"Summer {y}: no data"
+                               for y, r in summers.iterrows()],
+                    marker=dict(size=20, opacity=0), selected=dict(marker=dict(opacity=0)),
+                    unselected=dict(marker=dict(opacity=0)))
     if selected in c.index:
         fig.add_shape(type="rect", x0=selected.month - 0.5, x1=selected.month + 0.5, y0=selected.year - 0.5,
                       y1=selected.year + 0.5, line=dict(color=INK, width=3))
-    fig.update_xaxes(tickvals=list(range(1, 13)), ticktext=MONTHS, side="top", range=[0.5, 12.5], showgrid=False,
-                     fixedrange=True)
+    fig.update_xaxes(tickvals=list(range(1, 13)) + [SUMMER_X], ticktext=MONTHS + ["Summer"], side="top",
+                     range=[0.5, SUMMER_X + 0.6], showgrid=False, fixedrange=True)
     fig.update_yaxes(dtick=1, range=[years[1] + 0.5, years[0] - 0.5], showgrid=False, fixedrange=True)
     fig.update_layout(height=24 * len(yrs) + 150, margin=dict(l=10, r=10, t=30, b=10), dragmode=False,
                       clickmode="event+select", legend=dict(orientation="h", y=-0.02, yanchor="top"))

@@ -100,10 +100,16 @@ class Harmonize(WithData):
         early = self.calendar.loc["2005-08"]            # Terra and Aqua, scaled by k
         self.assertAlmostEqual(early["index"], self.k * 30 * early.count_modis / (2 * 31))
 
-    def test_k_is_the_ratio_over_the_overlap(self):
-        overlap = self.calendar.loc[h.OVERLAP[0]:h.OVERLAP[1]]
-        self.assertAlmostEqual(self.k, overlap.rate_viirs.sum() / overlap.rate_modis.sum())
+    def test_k_is_the_ratio_over_the_stable_orbit_years(self):
+        stable = self.calendar.loc["2012-02":"2021-12"]     # both sensors flying, before the MODIS orbits drifted
+        self.assertAlmostEqual(self.k, stable.rate_viirs.sum() / stable.rate_modis.sum())
         self.assertTrue(5 < self.k < 12 and self.k_by_year.min() < self.k < self.k_by_year.max())
+        self.assertEqual((self.k_by_year.index.min(), self.k_by_year.index.max()), (2012, 2021))
+
+    def test_modis_after_its_orbits_drifted_does_not_move_k(self):
+        drifted = h.monthly_rates(self.daily)
+        drifted.loc["2022-01":, "rate_modis"] *= 0.5        # as if MODIS lost half its detections from 2022
+        self.assertEqual(h.fit_k(drifted)[0], self.k)
 
     def test_hotspot_weights_add_up_to_the_daily_index(self):
         for bbox in (h.BOX, KAMLOOPS):
@@ -165,10 +171,68 @@ class Harmonize(WithData):
         self.assertEqual((november.since, november.n_years), (2012, 14))
         self.assertEqual(self.calendar.loc["2020-07", "since"], 2001)
 
+    def test_summer_index_is_the_mean_of_june_to_september(self):
+        summers, months = h.summer_table(self.calendar), self.calendar["index"]
+        for year in (2005, 2021):                           # scaled from MODIS; from VIIRS
+            self.assertAlmostEqual(summers.loc[year, "index"], months.loc[f"{year}-06":f"{year}-09"].mean())
+        self.assertEqual((bool(summers.loc[2011, "modis_scaled"]), bool(summers.loc[2012, "modis_scaled"])), (True, False))
+
+    def test_rank_of_a_summer_by_hand(self):
+        summers = h.summer_table(self.calendar)
+        row, index = summers.loc[2017], summers["index"]
+        others = index[(index.index >= 2001) & (index.index <= 2025) & (index.index != 2017)]
+        self.assertAlmostEqual(row.pct, ((others < row["index"]).sum() + 0.5 * (others == row["index"]).sum()) / len(others))
+        self.assertEqual((row["rank"], row.n_years, row.since), (1 + (others > row["index"]).sum(), len(others) + 1, 2001))
+        self.assertEqual(row.cls, min(int(row.pct * 5), 4))
+
+    def test_the_biggest_fire_season_is_the_record_summer(self):
+        best = h.summer_table(self.calendar).loc[2021]      # 2021 burned more of this area than any other year on record
+        self.assertEqual((best["rank"], best.cls, bool(best.record)), (1, 4, True))
+
+    def test_a_small_area_can_rank_every_summer_but_not_every_month(self):
+        c = h.calendar_table(h.monthly_rates(h.daily(self.rows, KAMLOOPS)), self.k)
+        months = c[c.index.month.isin([6, 7, 8, 9])].loc["2001":"2025"]
+        self.assertTrue(months.cls.isna().any())
+        self.assertTrue(h.summer_table(c).loc[2001:2025].cls.notna().all())
+
+    def test_summers_that_all_tie_are_not_ranked(self):
+        c = h.calendar_table(h.monthly_rates(h.daily(self.rows, EMPTY)), self.k)
+        summers = h.summer_table(c).loc[2001:2025]
+        self.assertTrue(summers.uncertain.all() and summers.cls.isna().all())
+
+    def test_an_unfinished_summer_is_not_rated(self):
+        to_august = h.summer_table(self.calendar.loc[:"2025-08"])       # as if the record stopped at the end of August 2025
+        self.assertTrue(np.isnan(to_august.loc[2025, "index"]) and np.isnan(to_august.loc[2025, "cls"]))
+        under_way = self.calendar.copy()
+        under_way.loc["2025-09", "partial"] = True                      # as if September 2025 were not over
+        self.assertTrue(np.isnan(h.summer_table(under_way).loc[2025, "index"]))
+        self.assertFalse(np.isnan(h.summer_table(self.calendar).loc[2025, "index"]))
+
     def test_outage_days_do_not_count_as_flying(self):
         self.assertEqual(self.daily.loc["2026-07-12", "sats_viirs"], 2)     # Suomi NPP out; NOAA-20 and NOAA-21 flying
         self.assertEqual(self.daily.loc["2001-06-20", "sats_modis"], 0)     # Terra, then the only satellite, was out
         self.assertEqual(self.daily.loc["2022-10-15", "sats_modis"], 1)
+
+    def test_days_with_no_scene_do_not_count_as_flying(self):
+        # NASA's scene catalogue has nothing from these satellites on these days, and neither has FIRMS.
+        self.assertEqual(self.daily.loc["2024-07-12", "sats_viirs"], 2)     # Suomi NPP: 10-15 and 24-28 July 2024
+        self.assertEqual(self.daily.loc["2023-07-20", "sats_viirs"], 2)     # NOAA-20: 19-22 July 2023
+        self.assertEqual(self.daily.loc["2026-03-06", "sats_modis"], 1)     # Terra: 4-9 March 2026
+        self.assertEqual(self.daily.loc["2002-08-03", "sats_modis"], 1)     # Aqua: 30 July to 7 August 2002
+
+    def test_a_month_with_lost_days_is_divided_by_the_days_flown(self):
+        july = self.calendar.loc["2024-07"]             # three satellites, less the 11 days Suomi NPP lost
+        self.assertAlmostEqual(july["index"], 30 * july.count_viirs / (3 * 31 - 11))
+
+    def test_no_viirs_satellite_counted_as_flying_is_silent_on_a_busy_day(self):
+        counts = self.rows[self.rows.sat.isin(h.VIIRS)].groupby(["day", "sat"], observed=True).size().unstack(fill_value=0)
+        counts = counts.reindex(index=self.daily.index, columns=h.VIIRS, fill_value=0)
+        in_service = pd.DataFrame({s: (counts.index >= h.SERVICE[s][0]) & (counts.index <= (h.SERVICE[s][1] or self.end))
+                                   for s in h.VIIRS}, index=counts.index)
+        no_outage = self.daily.sats_viirs == in_service.sum(axis=1)
+        busy = counts.sum(axis=1) >= 300
+        silent = ((counts == 0) & in_service).any(axis=1)
+        self.assertEqual(list(counts.index[no_outage & busy & silent].strftime("%Y-%m-%d")), [])
 
     def test_part_days_at_both_ends_are_left_out(self):
         con = sqlite3.connect(f"file:{h.DB.as_posix()}?mode=ro", uri=True)
@@ -177,6 +241,42 @@ class Harmonize(WithData):
         downloaded = pd.to_datetime(last, format="%Y-%m-%d%H%M") - pd.Timedelta(hours=7)     # in Pacific time
         self.assertEqual(self.end, downloaded.normalize() - pd.Timedelta(days=1))
         self.assertGreaterEqual(self.rows.day.min(), FIRST)      # the evening of 31 October 2000 is not a whole day
+
+
+class Calendar(WithData):
+    def summer_squares(self, view, c=None):
+        """The calendar figure and the value drawn in each year's summer square."""
+        fig = charts.calendar(self.calendar if c is None else c, view, pd.Period("2021-07"), (2000, self.end.year))
+        [squares] = [t for t in fig.data if t.type == "heatmap" and t.name == "Summer"]
+        return fig, dict(zip(squares.y, np.asarray(squares.z, dtype=float)[:, 0]))
+
+    def test_each_summer_has_a_square_in_the_colour_of_its_class(self):
+        fig, squares = self.summer_squares("class")
+        self.assertEqual(squares[2021], 4)                          # the record summer: much above normal
+        self.assertEqual(squares[2017], h.summer_table(self.calendar).loc[2017, "cls"])
+        self.assertTrue(np.isnan(squares[2000]))                    # the record starts in November 2000
+        self.assertEqual(fig.layout.xaxis.ticktext[-1], "Summer")   # after December
+
+    def test_summer_squares_use_the_months_colour_scale(self):
+        _, squares = self.summer_squares("index")
+        self.assertAlmostEqual(squares[2021], np.log10(self.calendar["index"].loc["2021-06":"2021-09"].mean() + 1))
+
+    def test_a_summer_that_cannot_be_ranked_is_marked_so(self):
+        c = h.calendar_table(h.monthly_rates(h.daily(self.rows, EMPTY)), self.k)
+        self.assertEqual(self.summer_squares("class", c)[1][2010], 5)       # 5 is "Cannot be ranked", as for a month
+
+    def test_pointing_at_a_summer_square_gives_its_rank(self):
+        fig, _ = self.summer_squares("class")
+        texts = [text for t in fig.data if t.hovertext is not None for text in t.hovertext if "Summer 2021" in text]
+        self.assertEqual(len(texts), 1)
+        self.assertIn("Much above normal (record): rank 1 of 25", texts[0])
+
+    def test_clicking_a_summer_square_picks_its_busiest_month(self):
+        fig, _ = self.summer_squares("class")
+        picks = {y: m for t in fig.data if t.customdata is not None for x, y, m in zip(t.x, t.y, t.customdata) if x > 12.5}
+        self.assertEqual(picks[2021], "2021-07")                    # July 2021 is the busiest month on record
+        busiest_2003 = self.calendar["index"].loc["2003-06":"2003-09"].idxmax()
+        self.assertEqual(picks[2003], str(busiest_2003))
 
 
 class Animations(WithData):
