@@ -8,8 +8,12 @@ arithmetic), not stored, so the tests keep passing when the cache is refreshed.
 """
 import json
 import re
+import shutil
 import sqlite3
+import tempfile
 import unittest
+import zipfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -559,12 +563,36 @@ class App(unittest.TestCase):
 
     def test_without_the_database_it_explains_how_to_build_it(self):
         real = h.DB
-        h.DB = real.with_name("missing.sqlite")
-        try:
-            at = AppTest.from_file(APP, default_timeout=60).run()
-        finally:
-            h.DB = real
+        with tempfile.TemporaryDirectory() as folder:        # no database and no packed downloads to build it from
+            h.DB = Path(folder) / "kamloops.sqlite"
+            try:
+                at = AppTest.from_file(APP, default_timeout=60).run()
+            finally:
+                h.DB = real
         self.assertTrue(any("download_kamloops.py" in e.value for e in at.error))
+
+    @unittest.skipUnless(h.DB.with_name("kamloops_hotspots.zip").exists(), "needs data/kamloops_hotspots.zip")
+    def test_a_fresh_copy_builds_its_database_from_the_packed_files(self):
+        # The copy that Streamlit Community Cloud runs has the packed downloads and no database.
+        packed = h.DB.with_name("kamloops_hotspots.zip")
+        with zipfile.ZipFile(packed) as z:
+            hotspots = sum(len(z.read(name).splitlines()) - 1 for name in z.namelist() if name.endswith(".csv"))
+        real, untouched = h.DB, (h.DB.stat().st_mtime if h.DB.exists() else None)
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:   # sqlite keeps its file open a while
+            shutil.copy(packed, folder)
+            h.DB = Path(folder) / "kamloops.sqlite"
+            try:
+                at = AppTest.from_file(APP, default_timeout=180).run()
+                built = sqlite3.connect(h.DB)
+                count = built.execute("SELECT COUNT(*) FROM hotspots").fetchone()[0]
+                built.close()
+            finally:
+                h.DB = real
+        self.assertEqual(real.stat().st_mtime if real.exists() else None, untouched)   # it built only the one it lacked
+        self.assertFalse(at.exception, msg=[str(e.value) for e in at.exception])
+        self.assertFalse(at.error, msg=[e.value for e in at.error])
+        self.assertEqual(at.subheader[0].value, "Kamloops area")
+        self.assertEqual(count, hotspots)
 
 
 if __name__ == "__main__":

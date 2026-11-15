@@ -19,18 +19,19 @@ DB = DATA / "kamloops.sqlite"
 TEXT_COLS = {"acq_time": str, "version": str, "confidence": str}
 
 
-def main():
-    files = sorted((DATA / "kamloops").glob("*.csv"))
+def main(db=DB):
+    """Build the database `db` from the kamloops/*.csv files in its folder."""
+    files = sorted((db.parent / "kamloops").glob("*.csv"))
     df = pd.concat(pd.read_csv(f, dtype=TEXT_COLS) for f in files)
     df["type"] = df["type"].astype("Int64")
 
-    DB.unlink(missing_ok=True)
-    with sqlite3.connect(DB) as con:
+    db.unlink(missing_ok=True)
+    with sqlite3.connect(db) as con:
         df.to_sql("hotspots", con, index=False)
         con.execute("CREATE INDEX idx_date ON hotspots (acq_date)")
         con.execute("CREATE INDEX idx_satellite_date ON hotspots (satellite, acq_date)")
         count = con.execute("SELECT COUNT(*) FROM hotspots").fetchone()[0]
-    print(f"{count} hotspots from {len(files)} files in {DB}")
+    print(f"{count} hotspots from {len(files)} files in {db}")
 
 
 if __name__ == "__main__":

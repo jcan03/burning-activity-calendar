@@ -1,7 +1,9 @@
-pandas
-requests
-python-dotenv
-streamlit
-plotly
-folium
-streamlit-folium
+pandas==2.3.3
+numpy==2.2.6
+requests==2.34.2
+python-dotenv==1.2.4
+streamlit==1.65.0
+plotly==7.1.0
+pillow==12.3.0
+folium==0.20.0
+streamlit-folium==0.26.2

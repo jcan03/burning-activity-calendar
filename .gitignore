@@ -223,3 +223,7 @@ __marimo__/
 data/*
 !data/.gitkeep
 !data/examples/
+# On the deploy branch only: what the hosted copy starts from (see `unpack` in app.py)
+!data/kamloops_hotspots.zip
+!data/basemap.jpg
+!data/terrain.npz

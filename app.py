@@ -4,11 +4,14 @@ Run:  streamlit run app.py
 Needs data/kamloops.sqlite (python download_kamloops.py, then python build_db.py).
 Runs offline: no FIRMS call, no MAP_KEY, no web map tiles.
 """
+import zipfile
+
 import numpy as np
 import pandas as pd
 import streamlit as st
 
 import animations
+import build_db
 import charts
 import harmonize as h
 
@@ -152,6 +155,21 @@ def pick_period():
         pick_months(*(pd.Period(m, "M") for m in (months[0] if isinstance(months, list) else months).split()))
 
 
+@st.cache_resource(show_spinner="First start: building the hotspot database from the packed downloads...")
+def unpack(db):
+    """Build the database from data/kamloops_hotspots.zip: the cached downloads of download_kamloops.py in one file.
+
+    Only a fresh copy that carries the zip needs it, such as the one Streamlit Community Cloud runs. Cached, so
+    that two visitors arriving together build it once.
+    """
+    packed = db.with_name("kamloops_hotspots.zip")
+    if not db.exists() and packed.exists():
+        with zipfile.ZipFile(packed) as z:
+            z.extractall(db.parent)
+        build_db.main(db)
+
+
+unpack(h.DB)
 if not h.DB.exists():
     st.error("No cached data found. Run `python download_kamloops.py`, then `python build_db.py`.")
     st.stop()
