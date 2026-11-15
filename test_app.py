@@ -481,10 +481,15 @@ class App(unittest.TestCase):
         first, last = at.select_slider(key="months").value
         self.assertEqual((str(first), last), ("2000-11", h.load_rows().day.max().to_period("M")))
 
+    def test_map_tab_offers_3d_first_then_the_two_flat_views(self):
+        view = [r for r in self.run_app().radio if r.label == "View"][0]
+        self.assertEqual(list(view.options), ["3D", "2D Timelapse", "2D Summary"])
+        self.assertEqual(view.value, "3D")          # what the Map tab opens on
+
     def test_every_view_draws_for_every_kind_of_period(self):
         at = self.run_app()
         for button in ("Whole record", "All of", "June to September"):
-            for view in ("Map", "Timelapse", "3D"):
+            for view in ("3D", "2D Timelapse", "2D Summary"):
                 self.choose(at, view=view, button=button, year=2021, month=8)
 
     def test_every_area_draws(self):
@@ -522,7 +527,7 @@ class App(unittest.TestCase):
         self.assertIn("All of 2021", [b.label for b in at.button])
 
     def test_a_circled_region_opens_its_calendar(self):
-        at = self.run_app()
+        at = self.choose(self.run_app(), view="2D Summary")      # the view whose map a region is circled on
         at.session_state["region"] = ((-120.9, 50.3), (-119.9, 50.3), (-119.8, 50.9), (-120.9, 50.9))
         at.session_state["open_region"] = True      # what circling a region on the map sets
         at.run()
