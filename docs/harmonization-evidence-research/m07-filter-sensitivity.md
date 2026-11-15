@@ -65,7 +65,7 @@ Picking months by a low count on one sensor biases the ratio toward that sensor 
 
 ## Limits
 
-- The site was identified by its position only; the facility was not identified. Other weak static sources may sit below the VIIRS detection limit.
+- The site was identified by its position only; the facility was not identified. (The team later judged it likely to be the Kruger pulp mill at Mission Flats; see [harmonization-tests.md](../harmonization-tests.md#static-and-recurring-sources).) Other weak static sources may sit below the VIIRS detection limit.
 - The quiet-month results rest on 17 months and 300 to 400 SNPP hotspots, and the level of the ratio depends on how the months are picked.
 - "Real fire" for type 3 and the pile-burning reading rest on timing, location and nearby fire pixels, not on fire perimeters or burn permits.
 - MODIS and VIIRS confidence classes are not on the same scale. MODIS counts were not corrected for duplicate pixels from overlapping scans.

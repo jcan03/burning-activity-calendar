@@ -89,7 +89,7 @@ Whole box, k fitted leaving out the year being predicted, comparing the index bu
 
 ### Filters
 
-- **One static source matters.** The site at 50.68872, −120.40745 has 921 VIIRS rows, all at night, about 1 MW, and no MODIS detections. In quiet years it is roughly 55–80% of VIIRS hotspots within 25 km of Kamloops. 58 of its rows are near-real-time and carry no `type`, so a `type` filter alone misses them.
+- **One static source matters.** The site at 50.68872, −120.40745 has 921 VIIRS rows, all at night, about 1 MW, and no MODIS detections. In quiet years it is roughly 55–80% of VIIRS hotspots within 25 km of Kamloops. 58 of its rows are near-real-time and carry no `type`, so a `type` filter alone misses them. It is likely the pulp mill at 2005 Mission Flats Road, 0.4 km from the site, though no source confirms it; see [harmonization-tests.md](harmonization-tests.md#static-and-recurring-sources).
 - **Do not filter on `type = 0` alone.** That drops every near-real-time row (all of August 2026 onward) and 2,062 `type` 3 rows, 94% of which fall on heavy fire days.
 - **The confidence filter is hygiene.** It removes 8.7% of MODIS and 3.7% of VIIRS rows and moves the ratio by about 5%. VIIRS `l` is a daytime-only class, and VIIRS `h` means a saturated pixel (5% of rows), not higher quality.
 - **The data are otherwise clean.** There are no exact duplicate rows, and 0.22% of rows have `frp` = 0.

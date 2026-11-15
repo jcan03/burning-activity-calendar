@@ -23,12 +23,12 @@ Three further documents report what the team's own FIRMS data and the literature
 
 - [docs/harmonization-evidence.md](docs/harmonization-evidence.md): the first measurements on the team's data, arranged by the choices the team has to make. Read it before deciding how counts are converted, combined or compared.
 - [docs/harmonization-methods.md](docs/harmonization-methods.md): a catalogue of candidate methods with published precedent and effort. Read it when looking for a method or for precedent to cite.
-- [docs/harmonization-tests.md](docs/harmonization-tests.md): the latest tests, including three follow-ups, with how strong each result is. It is the newest of the three and wins where they differ. Read it before relying on any number.
+- [docs/harmonization-tests.md](docs/harmonization-tests.md): the latest tests, including four follow-ups, with how strong each result is. It is the newest of the three and wins where they differ. Read it before relying on any number.
 
 Findings that any code touching the hotspot record has to respect. Each is from those documents.
 
 - **Months are keyed by local date.** Keying by UTC date moved 455 MODIS hotspots from 30 June 2021 into July, because Terra's evening pass falls after midnight UTC.
-- **The fixed heat source near 50.688°N, 120.408°W is removed before any scaling.** It is seen on 712 dates in 2012–2026, only by the VIIRS satellites and only at night, and no scale factor can remove an added constant.
+- **The fixed heat source near 50.688°N, 120.408°W is removed before any scaling.** It is seen on 712 dates in 2012–2026, only by the VIIRS satellites and only at night, and no scale factor can remove an added constant. It is likely the pulp mill at Mission Flats, though no source confirms it.
 - **Counts from several VIIRS satellites are not summed or pooled against a single-satellite baseline.** Summing gives 1.99 times one satellite's count from April 2018 and 2.95 times from March 2023.
 - **Conversion factors are fitted on the whole box over the stable-orbit years, not on a user's area.** The tested factor is 0.2425 (Terra plus Aqua over Suomi NPP) on the 116 stable-orbit months of 2012–2021. In a 25 km circle MODIS records nothing in 40% of the months in which Suomi NPP saw fire.
 - **Near-real-time rows have no `type` column.** The newest months of any download are near-real-time; in the team's data on 14 November 2026, standard rows ended on 29 August 2026 for MODIS and 31 July 2026 for VIIRS.
