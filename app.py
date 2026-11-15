@@ -165,7 +165,11 @@ def unpack(db):
     packed = db.with_name("kamloops_hotspots.zip")
     if not db.exists() and packed.exists():
         with zipfile.ZipFile(packed) as z:
-            z.extractall(db.parent)
+            for member in z.infolist():
+                # The zip was made on Windows and names its files kamloops\x.csv. Only Windows reads that
+                # backslash as a folder: on Linux, where the hosted copy runs, the folder would be missing.
+                member.filename = member.filename.replace("\\", "/")
+                z.extract(member, db.parent)
         build_db.main(db)
 
 
