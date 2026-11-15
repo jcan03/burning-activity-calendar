@@ -133,8 +133,9 @@ def region_calendar(shape, t, colour, years):
     st.plotly_chart(charts.calendar(c, colour, t, years, top=max(c["index"].max(), 10)), config={"displayModeBar": False})
     st.caption("Index = hotspots per satellite per 30 days, in VIIRS units, for the circled region only. The "
                "darkest colour is this region's own busiest month, so its colours cannot be compared with the "
-               "main calendar's. A small region has few hotspots, so many of its months cannot be ranked. Close "
-               "this and circle again to look at another region.")
+               "main calendar's. A small region has few hotspots, so many of its months cannot be ranked; the "
+               "Summer column ranks June to September as a whole, which usually can be. Close this and circle "
+               "again to look at another region.")
 
 
 def pick_months(first, last):
@@ -223,7 +224,8 @@ else:
 unranked = c.loc[str(h.BASE_YEARS[0]):str(h.BASE_YEARS[1])].uncertain.mean()
 if unranked > 0.15:
     st.warning(f"In this area {unranked:.0%} of months cannot be ranked, because hotspots are too few. "
-               "Small areas are noisy: a larger area gives a steadier calendar.")
+               "Small areas are noisy: a larger area gives a steadier calendar. The Summer column ranks June to "
+               "September as a whole, which usually has enough hotspots.")
 
 calendar_tab, season_tab, map_tab, method_tab, download_tab = st.tabs(
     ["Calendar", "Season and daily", "Map", "Method", "Download"], key="tabs")   # the key keeps the open tab open
@@ -232,7 +234,8 @@ with calendar_tab:
     st.plotly_chart(charts.calendar(c, colour, t, years), key="calendar", on_select=pick_month, selection_mode="points",
                     config={"displayModeBar": False})
     st.caption("Index = hotspots per satellite per 30 days, in VIIRS units. "
-               "\"Compared with normal\" ranks each month against the same month in other years.")
+               "\"Compared with normal\" ranks each month against the same month in other years. "
+               "The Summer column is June to September as a whole, ranked against the other summers.")
     if t in c.index and not np.isnan(c.loc[t, "index"]):
         st.plotly_chart(charts.month_history(c, t), config={"displayModeBar": False})
     with st.expander("Show the calendar as a table"):
@@ -340,8 +343,10 @@ changed five times.
 
 1. **Count per satellite.** Each month's hotspots are divided by the number of satellite-days in service.
 2. **One unit.** From February 2012 the index is the VIIRS rate. Before that it is the MODIS rate times {k:.1f},
-   a factor measured on the 14 years when both flew (it ranged from {k_by_year.min():.1f} to {k_by_year.max():.1f} by year).
+   a factor measured on 2012 to 2021, when both flew and the MODIS orbits were still steady (it ranged from
+   {k_by_year.min():.1f} to {k_by_year.max():.1f} by year).
 3. **Rank, not count.** Each month is ranked against the same calendar month in other years, in five classes.
+   Each summer (June to September) is ranked the same way against the other summers.
 """)
     left, right = st.columns(2)
     left.plotly_chart(charts.adding_satellites(c), config={"displayModeBar": False})
@@ -351,7 +356,8 @@ changed five times.
     within = (np.abs(np.log2((o.rate_viirs + 1) / (k * o.rate_modis + 1))) <= 1).mean()
     right.plotly_chart(charts.sensor_check(c, k), config={"displayModeBar": False})
     right.caption(f"Each dot is a month from 2012 to 2025, when both sensors flew. In this area {within:.0%} of months "
-                  "agree within a factor of 2.")
+                  "agree within a factor of 2. The factor was measured on 2012 to 2021, so 2022 to 2025 test it on "
+                  "years it was not fitted on.")
     st.markdown("""
 **What to keep in mind**
 
@@ -361,7 +367,8 @@ changed five times.
   2012 onward only, and earlier months against MODIS years only.
 - Months since August 2026 use provisional near-real-time data and may change.
 - Dates are in Pacific time (UTC-7), as in Kamloops, not the UTC dates in the FIRMS files.
-- Small areas have few hotspots, so many months cannot be ranked.
+- Small areas have few hotspots, so many months cannot be ranked. A whole summer usually can: in a test on
+  areas about 100 km across, almost every summer could be ranked, against about 6 in 10 single summer months.
 - Colours: brighter means more burning, on every chart and map. Blue marks below normal and amber above. The colours
   were chosen to stay distinct with colour-blind vision.
 - Low-confidence detections and one fixed industrial heat source west of Kamloops are removed.
