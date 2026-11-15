@@ -304,14 +304,60 @@ class Animations(WithData):
             months = animations.timeline(index, T(start), T(stop)).data[1]
             self.assertEqual(list(months.customdata), [f"2021-{m:02d} 2021-{m:02d}" for m in range(1, 13)])
 
+    def timelapse(self, bbox, start, stop, points=None):
+        index = h.daily_index(h.daily(self.rows, bbox), self.k)
+        return animations.timelapse(self.points if points is None else points, bbox, start, stop, index)
+
     def test_timelapse_counts_every_hotspot(self):
         for bbox, (start, stop) in [(KAMLOOPS, SUMMER_2021), (h.BOX, (FIRST, self.end)), (EMPTY, SUMMER_2021)]:
-            fig = animations.timelapse(self.rows, bbox, start, stop)
+            fig = self.timelapse(bbox, start, stop)
             inside = h.in_box(self.rows, bbox)
             total = int(inside.day.between(start, stop).sum())
             so_far = int(re.search(r"([\d,]+) so far", fig.frames[-1].layout.title.text).group(1).replace(",", ""))
             self.assertEqual(so_far, total)
             self.assertTrue(all(len(f.data[1].x) + len(f.data[2].x) <= 1000 for f in fig.frames))
+
+    def test_timelapse_playhead_marks_each_step_on_its_timeline(self):
+        # Each frame's last trace is the playhead: an upright line on the timeline under the map.
+        fig = self.timelapse(KAMLOOPS, *SUMMER_2021)                              # one frame a day
+        clickable = [t for t in fig.data if t.customdata is not None][0]          # the timeline's layer that takes the click
+        self.assertEqual(clickable.customdata[0], "2021-01 2021-01")              # zoomed to the year, as the period is in it
+        self.assertEqual(fig.data[fig.frames[0].traces[-1]].xaxis, clickable.xaxis)
+        self.assertNotEqual(clickable.xaxis, fig.data[1].xaxis)                   # not on the map
+        heads = [f.data[-1].x for f in fig.frames]
+        self.assertTrue(all(len(x) == 2 and x[0] == x[1] for x in heads))
+        self.assertEqual([T(x[0]) for x in heads], list(pd.date_range(*SUMMER_2021)))
+        self.assertEqual(T(fig.data[fig.frames[0].traces[-1]].x[0]), SUMMER_2021[0])   # before Play: at the first step
+        whole = self.timelapse(KAMLOOPS, FIRST, self.end)                         # one frame a month
+        self.assertEqual([T(f.data[-1].x[0]).strftime("%B %Y") for f in whole.frames], [f.name for f in whole.frames])
+
+    def test_timelapse_outlines_big_burnt_patches_for_twelve_months(self):
+        south, west, north, east = KAMLOOPS
+        km_east = 111.2 * np.cos(np.radians((south + north) / 2))
+
+        def fire(x, y, hotspots):
+            """Hotspots of activity 1 each on 10 July 2021, at a place given in km from the area's south-west corner."""
+            return pd.DataFrame({"lat": south + y / 111.2, "lon": west + x / km_east, "day": T("2021-07-10"),
+                                 "sat": "N", "w": 1.0}, index=range(hotspots))
+
+        # In this area's 2 km squares: one square that is big alone (150 is over SCAR), two touching squares that are
+        # only big together (60 each), and a lone square that is too small (60).
+        points = pd.concat([fire(21, 21, 150), fire(41, 21, 60), fire(43, 21, 60), fire(61, 61, 60)], ignore_index=True)
+        fig = self.timelapse(KAMLOOPS, T("2019-01-01"), T("2023-12-31"), points)  # long enough to play month by month
+
+        def outline_km(frame):
+            lon, lat = (np.array(v, dtype=float) for v in (frame.data[3].x, frame.data[3].y))
+            return np.nansum(np.hypot(np.diff(lon) * km_east, np.diff(lat) * 111.2))   # the gaps between lines are NaN
+
+        length = {f.name: outline_km(f) for f in fig.frames}
+        outlined = [name for name, km in length.items() if km > 0]
+        self.assertEqual((outlined[0], outlined[-1], len(outlined)), ("July 2021", "June 2022", 12))
+        # Once round the 2 km square (8 km) and once round the 2 km by 4 km pair (12 km), with no line between the pair.
+        self.assertAlmostEqual(length["July 2021"], 20, delta=0.2)
+        july = [f for f in fig.frames if f.name == "July 2021"][0]
+        east_km = (np.array(july.data[3].x, dtype=float) - west) * km_east
+        self.assertAlmostEqual(np.nanmin(east_km), 20, delta=0.1)
+        self.assertAlmostEqual(np.nanmax(east_km), 44, delta=0.1)                 # nothing round the small square at 61 km
 
     def test_3d_columns_hold_all_the_activity(self):
         start, stop = SUMMER_2021
@@ -351,6 +397,13 @@ class Animations(WithData):
         html, top, cell_km, stretch = animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)
         self.assertEqual((summer["big"], summer["adds"]), (animations.SCAR, False))
         self.assertAlmostEqual(summer["most"], top)      # the activity that the tallest height stands for
+
+    def test_3d_page_knows_the_time_of_each_step(self):
+        # The page's script moves a playhead on the period timeline to each step's time, in plotly's milliseconds.
+        summer = page_data(animations.columns_3d(self.points, KAMLOOPS, *SUMMER_2021, 2)[0])     # one frame a day
+        self.assertEqual(list(pd.to_datetime(summer["at"], unit="ms")), list(pd.date_range(*SUMMER_2021)))
+        whole = page_data(animations.columns_3d(self.points, KAMLOOPS, FIRST, self.end, 2)[0])   # one frame a month
+        self.assertEqual([t.strftime("%B %Y") for t in pd.to_datetime(whole["at"], unit="ms")], whole["dates"])
 
     def test_3d_squares_widen_when_there_are_too_many(self):
         html, top, cell_km, stretch = animations.columns_3d(self.points, h.BOX, FIRST, self.end, 2)

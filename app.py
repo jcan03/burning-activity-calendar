@@ -54,7 +54,7 @@ def weighted():
 # No spinners on these two: a spinner would take the view's place and make the period controls under it jump.
 @st.cache_data(max_entries=8, show_spinner=False)
 def timelapse_figure(bbox, start, stop):
-    return animations.timelapse(rows(), bbox, start, stop)
+    return animations.timelapse(weighted(), bbox, start, stop, h.daily_index(tables(bbox)[0], factor()[0]))
 
 
 @st.cache_data(max_entries=4, show_spinner=False)
@@ -275,8 +275,9 @@ with map_tab:
     first, last = st.select_slider("Period", record, (record[0], record[-1]), key="months",
                                    format_func=lambda m: m.strftime("%b %Y"), label_visibility="collapsed")
     start, stop = max(first.start_time, FIRST), min(last.end_time.normalize(), end)
-    timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), key="timeline", on_select=pick_period,
-                          selection_mode="points", config={"displayModeBar": False})
+    if view != "Timelapse":     # the timelapse has the timeline in its own figure, so its playhead can move on it
+        timeline.plotly_chart(animations.timeline(h.daily_index(d, k), start, stop), key="timeline", on_select=pick_period,
+                              selection_mode="points", config={"displayModeBar": False})
     shown = start.year if start.year == stop.year else year     # the buttons follow the year the timeline is zoomed to
     picks = {"Whole record": (record[0], record[-1]), f"All of {shown}": (pd.Period(f"{shown}-01"), pd.Period(f"{shown}-12")),
              f"June to September {shown}": (pd.Period(f"{shown}-06"), pd.Period(f"{shown}-09")), charts.month_name(t): (t, t)}
@@ -303,11 +304,16 @@ with map_tab:
                    "Select in the map's toolbar and drag. VIIRS has smaller pixels than MODIS, so it draws many "
                    "more dots for the same fire.")
     elif view == "Timelapse":
-        stage.plotly_chart(timelapse_figure(bbox, start, stop), config={"displayModeBar": False, "scrollZoom": True})
+        stage.plotly_chart(timelapse_figure(bbox, start, stop), key="timeline", on_select=pick_period,
+                           selection_mode="points", config={"displayModeBar": False, "scrollZoom": True})
         st.caption("Press Play. Scroll to zoom in, drag to move, and double-click to zoom back out. Coloured dots "
                    "are the hotspots of each step, and grey dots the three steps before. Busy steps show a sample "
                    "of the dots; the title counts every hotspot. VIIRS draws many more dots than MODIS for the "
-                   "same fire.")
+                   "same fire. The upright line on the chart under the map shows where the timelapse has got to.")
+        st.caption(f"Burn scars: a pale outline stays for 12 months around each big burnt patch, as in the 3D view. "
+                   f"A patch is big when its squares, taken together, reach an activity of {animations.SCAR}. It "
+                   "marks squares with hotspots, not a surveyed fire perimeter, and burning from before the period "
+                   "shown leaves no outline.")
     else:
         page = columns_page(bbox, start, stop, cell_km, add_up, 50 if orbit else 0)
         if page is None:
@@ -317,7 +323,8 @@ with map_tab:
             stage.iframe(html, height=TALL_3D)
             what = ("Columns add up through the period, so they only rise" if add_up else
                     "Columns show the burning at each step, so they rise when a fire starts and drop when it is out")
-            st.caption(f"Press Play. {what}. Pause to rotate by dragging; scroll to zoom. Each column is a {cell_km} km square. "
+            st.caption(f"Press Play. {what}. The upright line on the chart under the view shows where it has got to. "
+                       f"Pause to rotate by dragging; scroll to zoom. Each column is a {cell_km} km square. "
                        f"Its height is the square root of its activity (hotspots per satellite, in VIIRS units); "
                        f"the tallest stands for {top:,.0f}. Heights are relative to the busiest square of this "
                        "period, so they cannot be compared between periods.")
