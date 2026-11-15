@@ -8,6 +8,8 @@ Research handoff for whoever owns the data and harmonization work. Compiled 14 N
 
 Sensor facts are in [sensor-reference.md](sensor-reference.md). This file is about what to do with them.
 
+**Later changes.** On 14 November 2026 the method below gained outage days, a shorter fitting period for the factor and a summer rating, and two items under "Not done" were done. Each change is made in place and listed under [Changes since first compiled](#changes-since-first-compiled).
+
 ## Recommended method
 
 A VIIRS-equivalent, per-satellite monthly index, ranked by percentile.
@@ -17,10 +19,11 @@ A VIIRS-equivalent, per-satellite monthly index, ranked by percentile.
    - Drop every row within 0.4 km of 50.68872, −120.40745 (a static heat source west of Kamloops), including near-real-time rows.
    - Drop low confidence: MODIS below 30, VIIRS `l`.
    - No scan-angle, FRP or duplicate filters.
-2. **Count per satellite, then divide by satellite-days.** For each month and each sensor family, rate = 30 × hotspots ÷ satellite-days in service. Satellite-days exclude known outages. Never add satellites together.
-3. **Convert MODIS to VIIRS units with one factor, k.** k = sum of VIIRS rates ÷ sum of MODIS rates over February 2012 to December 2025, fitted once on the whole box. With the filters above k = 8.73.
+2. **Count per satellite, then divide by satellite-days.** For each month and each sensor family, rate = 30 × hotspots ÷ satellite-days in service. Satellite-days exclude known outages and days with no scene from the satellite in NASA's granule catalogue. Never add satellites together.
+3. **Convert MODIS to VIIRS units with one factor, k.** k = sum of VIIRS rates ÷ sum of MODIS rates over February 2012 to December 2021, the years when both flew and the MODIS orbits were steady, fitted once on the whole box. With the filters above k = 8.64. Fitted through December 2025, as first compiled, it was 8.73.
 4. **Build the index.** Before February 2012: MODIS rate × k. From February 2012: the VIIRS rate. MODIS is used after 2012 only to check the method.
 5. **Rank each month against the same calendar month in other years** (percentile, five classes, plus a record marker). Rules that worked in testing: at least 8 baseline years; label the class "uncertain" when 20% or more of the baseline ties with the value; show "× median" only when the baseline median is at least 3.
+6. **Rank each summer too.** June to September as a whole is ranked against the other summers by the same rules. Its value is the mean of the four monthly index values. In a small area a summer can usually be ranked where single months cannot.
 
 **Flag rather than correct:** Terra-only months (2000-11 to 2002-06), MODIS-scaled months (before 2012-02), near-real-time months (VIIRS from 2026-08, MODIS from 2026-09), outage months (2022-07, 2022-08, 2022-10), partial months, and off-season months before 2012 (see "What MODIS cannot see").
 
@@ -28,7 +31,7 @@ A VIIRS-equivalent, per-satellite monthly index, ranked by percentile.
 
 ## How well it works
 
-Whole box, k fitted leaving out the year being predicted, comparing the index built from MODIS alone with the index built from VIIRS alone over 2012-02 to 2025-12.
+Whole box, k fitted leaving out the year being predicted, comparing the index built from MODIS alone with the index built from VIIRS alone over 2012-02 to 2025-12. These figures were computed before the changes of 14 November 2026, which moved k by 1%, and were not recomputed.
 
 | Measure | All months | June–September |
 |---|---|---|
@@ -44,12 +47,13 @@ Whole box, k fitted leaving out the year being predicted, comparing the index bu
 - **k depends on the filters.** Without the confidence filter it is 8.27. In raw-count terms the same relationship is Suomi NPP : (Terra + Aqua) = 4.15, Suomi NPP : Aqua = 8.89, Suomi NPP : Terra = 7.78.
 - **For the Terra-only months** a Terra-specific factor of 8.20 was fitted.
 - **It checks out against known fires.** Top years are 2021, 2017, 2023, 2018 and 2003. The top month is July 2021. September 2003, June–August 2021 and summer 2023 rank as records or well above normal. Summer 2026 (June–September) ranks 2nd of 26 years, but August onward rests on near-real-time data.
+- **It ranks years as BC's area-burned record does.** Yearly totals of the index for the whole box have a rank correlation of 0.88 (0.66–0.97) with BC area burned over 2003–2025 for April to October, and 0.98 (0.90–1.00) for June to September. Adding every hotspot from every satellite together gives 0.75 and 0.91. Of the 126 pairs of years on either side of 2012, the index orders 84% as area burned does, against 70% for the plain sum. The six largest seasons are the same in both records, and provisional 2026 is second of 26 in both. MODIS alone scores the same as the index, so this shows the join does no harm; it does not show a gain over one sensor. Detail: [harmonization-tests.md](harmonization-tests.md#changes-made-to-harmonizepy).
 
 ### Limits that should be stated
 
 - **A simpler baseline scores the same.** MODIS × 4.15 spliced with Suomi NPP counts alone matched or slightly beat this method on agreement (typical error 0.44 against 0.48 in log2 units). The per-satellite method is preferred for other reasons: it still works after Suomi NPP ended on 2 November 2026, it handles outages, and a fourth VIIRS satellite needs only a table entry. Justify it on continuity, not accuracy.
 - **Quiet months run low before 2012.** In the typical month the VIIRS-based value is about 1.16× the MODIS-based one. In June–September the bias is slightly the other way (re-checked: −0.12 in log2 units). The gap comes from quiet months, where VIIRS sees small fires that MODIS misses. Other ways of fitting k do not fix it: the median of monthly ratios gives 9.57, months with 30 or more MODIS hotspots give 8.49, June–September alone 8.86.
-- **Small areas are noisy.** Within 50 km of Kamloops the typical error is about 2×, 19% of months are tie-uncertain, and the MODIS-based index is zero in half of months. Within 25 km, 53% of months are uncertain. k fitted per area is close to the global one (8.65–9.64), so the cause is small counts, not k. Below about 50 km radius (8,000 km²) show ranks only, with a warning.
+- **Small areas are noisy.** Within 50 km of Kamloops the typical error is about 2×, 19% of months are tie-uncertain, and the MODIS-based index is zero in half of months. Within 25 km, 53% of months are uncertain. k fitted per area is close to the global one (8.65–9.64), so the cause is small counts, not k. Below about 50 km radius (8,000 km²) show ranks only, with a warning. A summer rating fills part of the gap: in 50 km circles 96% of June-to-September seasons can be ranked, against 60% of single months, and in 25 km circles 61% against 25%. Detail: [harmonization-tests.md](harmonization-tests.md#a-season-in-place-of-a-month).
 - **Near-real-time bias cannot be tested** with the cached data, so recent months stay provisional.
 
 ## What the evidence says
@@ -120,7 +124,7 @@ Whole box, k fitted leaving out the year being predicted, comparing the index bu
 - Schroeder 2014's "3× by day and 25× at night" compares VIIRS 375 m with VIIRS 750 m, not with MODIS.
 - The Punjab "4.8×" figure compares different periods and was not opened.
 - Fu 2020 and Li 2018 were seen as abstracts only.
-- The "not advisable" wording attributed to Giglio 2025 was not confirmed. The safe wording is that its authors expect regional statistical calibration to be needed.
+- The "not advisable" wording attributed to Giglio 2025 was not confirmed when this file was compiled. The methods review later found it in the paper's text; see [the reconciliation file](harmonization-methods-research/_reconcile.md).
 - The Global Fire Atlas and FIRED event methods are single-sensor and tuned on burned-area data elsewhere.
 
 ## Judging notes
@@ -152,7 +156,21 @@ Opened and confirmed by a second reader unless noted.
 
 ## Not done
 
-- No comparison with burned area. BC Wildfire Service perimeters and Canada's NBAC are free, but were not downloaded.
-- The effect of orbit drift on counts is not quantified.
 - Nothing here was tested outside this box.
-- A pandas prototype of the method (about 190 lines) and its test script exist outside the repository. They are not committed.
+- No comparison with fire perimeters. BC Wildfire Service perimeters and Canada's NBAC are free, but were not downloaded. Yearly area burned from BC's incident points has been compared; see "How well it works".
+- The figures under "How well it works" were not recomputed after the changes of 14 November 2026.
+
+Done since first compiled: the comparison with area burned, and a measure of the orbit drift's effect on counts (Terra's daytime count was about half of normal in 2026; [harmonization-tests.md](harmonization-tests.md#the-orbit-drift)). The method is now in `harmonize.py`, with tests in `test_app.py`.
+
+## Changes since first compiled
+
+Each change was made in place above on 2026-11-14.
+
+| Statement | First compilation | Now | Source |
+|---|---|---|---|
+| Months used to fit k (step 3) | February 2012 to December 2025; k = 8.73 | February 2012 to December 2021, before the MODIS orbits drifted; k = 8.64. No monthly rating changed. | [harmonization-tests.md](harmonization-tests.md#changes-made-to-harmonizepy) |
+| Satellite-days (step 2) | Exclude known outages | Also exclude days with no scene in NASA's granule catalogue, and NOAA-20's lost days of July 2023. July 2024 rises 13% on the whole box. | [harmonization-tests.md](harmonization-tests.md#changes-made-to-harmonizepy) |
+| Summer rating (step 6; "Small areas are noisy") | None | Added, from a test of a season in place of a month in small areas | [harmonization-tests.md](harmonization-tests.md#a-season-in-place-of-a-month) |
+| Check against area burned ("How well it works"; "Not done") | Not done | Done on the app's own index: rank correlation 0.88 over 2003–2025 | [harmonization-tests.md](harmonization-tests.md#changes-made-to-harmonizepy) |
+| Effect of orbit drift on counts ("Not done") | Not quantified | Quantified in the later tests | [harmonization-tests.md](harmonization-tests.md#the-orbit-drift) |
+| The "not advisable" wording of Giglio 2025 ("Cite with care") | Not confirmed | Found in the paper's text by the methods review | [_reconcile.md](harmonization-methods-research/_reconcile.md) |

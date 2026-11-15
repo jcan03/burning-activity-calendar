@@ -2,7 +2,7 @@
 
 Team reference for City of Kamloops & Co. It reports tests of the questions left open by [harmonization-evidence.md](harmonization-evidence.md) and trials of approaches borrowed from other fields, all run on the team's own FIRMS data. It says what each test shows and how strong the result is. It does not choose the team's method.
 
-Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run and independently recomputed by a reviewer. Two further topics (longer-shot models and data availability) were each handled by a single agent with no second reviewer. The sources behind the borrowed approaches were researched and then verified. A final pass reconciled numbers that differed between topics. Three follow-up tests, on questions this document first listed as missing, were then run by an analyst and re-run and recomputed by a reviewer in the same way; they are reported under [Follow-up tests](#follow-up-tests). A fourth follow-up, on rank classes and the combined VIIRS series, was run as four analyses, each re-run and recomputed by a reviewer, with a cross-check at the end. The twenty-five working files are in [harmonization-tests-research/](harmonization-tests-research/).
+Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run and independently recomputed by a reviewer. Two further topics (longer-shot models and data availability) were each handled by a single agent with no second reviewer. The sources behind the borrowed approaches were researched and then verified. A final pass reconciled numbers that differed between topics. Three follow-up tests, on questions this document first listed as missing, were then run by an analyst and re-run and recomputed by a reviewer in the same way; they are reported under [Follow-up tests](#follow-up-tests). A fourth follow-up, on rank classes and the combined VIIRS series, was run as four analyses, each re-run and recomputed by a reviewer, with a cross-check at the end. A fifth follow-up, on classing a season in place of a month in small areas, was run by one analyst and checked by reproduction and a separate recomputation, with no second reviewer. The twenty-six working files are in [harmonization-tests-research/](harmonization-tests-research/).
 
 **The data.** The same 737,244 FIRMS hotspots as before (box 49.0–52.5°N, 122.5–118.0°W, November 2000 to November 2026), with three changes: months are keyed by local date, the fixed heat source near Kamloops is removed, and only vegetation-fire rows and near-real-time rows are kept. On the 116 stable-orbit months this gives a MODIS-to-Suomi-NPP ratio of 0.2425 (0.343 by day, 0.177 at night), which every analysis reproduced before starting.
 
@@ -30,6 +30,7 @@ Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run
 16. **The converted baseline still wins when months are classed by rank.** On the whole box it gains 25.9 points over a short VIIRS-only baseline in the fire season, against 18.2 points under the ratio classes used above. Part of the larger gain probably comes from how coarse a four-year baseline is under rank classes.
 17. **It still wins when the month being classed does not come from Suomi NPP.** With NOAA-20 and NOAA-21 only, as from November 2026, the label matches the full record's in 86.5% of fire-season months on the box under ratio classes, against 66.3% for the VIIRS-only benchmark. Against the same baseline, the two-satellite series gives the same label as the three-satellite series in 97.7% of months.
 18. **Rank classes are not clearly less sensitive to the level of the converted years, and June to September is where the real record depends on them least.** There, 12 of 56 box labels differ from a VIIRS-only baseline under either scheme, against 35 of 98 for April to October under ratio classes and 29 of 98 under rank classes. The gain over a VIIRS-only baseline of the real length, 14 years, is still unmeasured.
+19. **In a small area, a summer can be classed where a month cannot.** In 50 km circles, 96% of June-to-September seasons can be classed, against 60% of single months, and the converted baseline gives the true class in 84% of them. In 25 km circles the share rises from 25% to 61%. This rests on nine seasons per circle and had no second reviewer.
 
 ## How this relates to the team's recommended method
 
@@ -37,7 +38,8 @@ A separate piece of work on the same day produced [harmonization-research.md](ha
 
 - **Where the two agree.** Both find about 4.1 Suomi NPP hotspots for every Terra-plus-Aqua hotspot (4.15 there; 1 ÷ 0.2425 = 4.12 here). Both find that satellites must not be summed, that one factor fitted on the whole box is good enough, that the fixed heat source near Kamloops has to be removed by location, that the orbit drift should be flagged, and that areas below about 50 km radius are too noisy.
 - **What this document adds.** That file lists a comparison with area burned and a measure of the drift's effect on counts as not done. Both are here: see [Is the factor stable, and where can it be trusted?](#is-the-factor-stable-and-where-can-it-be-trusted) and [The orbit drift](#the-orbit-drift). Also here are the test against a short VIIRS-only baseline, the baseline of the real length, the label noise from the change of satellite, and the availability flag from NASA's granule catalogue.
-- **Gaps missing from `harmonize.py`.** Its outage table lacks whole-day gaps that the catalogue shows (UTC days): Suomi NPP on 30 May – 3 June, 10–15 July and 24–28 July 2024; Terra on 13–15 May 2025 and 5–10 March 2026; NOAA-21 on 10–14 January 2026. NOAA-20 also recorded no hotspots on 19–22 July 2023 although its scenes were normal. These change the satellite-days that the method divides by. Detail: [f03](harmonization-tests-research/f03-availability-flag.md).
+- **Gaps missing from `harmonize.py`.** Its outage table lacked whole-day gaps that the catalogue shows (UTC days): Suomi NPP on 30 May – 3 June, 10–15 July and 24–28 July 2024; Terra on 13–15 May 2025 and 5–10 March 2026; NOAA-21 on 10–14 January 2026. NOAA-20 also recorded no hotspots on 19–22 July 2023 although its scenes were normal. These change the satellite-days that the method divides by. Detail: [f03](harmonization-tests-research/f03-availability-flag.md). **Added on 2026-11-14:** see [Changes made to `harmonize.py`](#changes-made-to-harmonizepy).
+- **Fit years.** `harmonize.py` fitted its factor on February 2012 to December 2025, which includes the drift years. It now fits on February 2012 to December 2021; see the same section.
 - **May and September.** `harmonize.py` ranks May to September against every year from 2001, and other months against VIIRS years only. The real-length baseline test found converted 2003–2011 medians of 3.9 times the VIIRS-era median in May and 1.7 times in September, though each interval includes 1. Those are the two months of its mixed baseline where the level before 2012 matters most. Detail: [f01](harmonization-tests-research/f01-real-length-baseline.md).
 - **Differences in definitions.** That method drops low-confidence rows and keeps `type` 3 rows. The tests here keep `type` 0 and near-real-time rows and apply no confidence filter. It ranks by percentile in five equal classes; the tests here class a month by its ratio to the calendar-month median. Agreement rates from the two are therefore not directly comparable.
 - **One citation.** That file says the "not advisable" wording attributed to Giglio et al. 2025 was not confirmed. The methods review found it in the paper's text; see [the reconciliation file](harmonization-methods-research/_reconcile.md).
@@ -78,6 +80,7 @@ Fire-season months, 31 circles per radius. "Classed" means the baseline median i
 - **The feared bias is small.** Zeros in the MODIS era were expected to make later VIIRS months look above normal. In the months most exposed to it, the converted baseline labels 2 to 3 points too many months above normal. The rule that a month is classed only when its baseline median is at least one hotspot is what keeps it small.
 - **Random thinning does not help here.** It classes fewer months than scaling up (13% against 17% at 25 km, 39% against 55% at 50 km) and agrees less often. Thinning moves VIIRS onto MODIS's sparse scale, so medians that were zero stay zero.
 - **Shrinking a circle toward the whole box lowered agreement at every radius,** but this test cannot reward it: the answer is defined on the very count being classed, so any move toward the region moves away from the answer. Its value as context for a user is untested.
+- **A season in place of a month was tested later.** In 50 km circles a June-to-September season can be classed in 96% of cases. See [A season in place of a month](#a-season-in-place-of-a-month).
 
 How often MODIS records nothing in a month when Suomi NPP saw fire:
 
@@ -194,7 +197,7 @@ Detail: [a12](harmonization-tests-research/a12-static-sources.md), [w03](harmoni
 
 ## Follow-up tests
 
-Three questions that the first version of this document listed as missing were tested afterwards. Each was run by an analyst and then re-run and independently recomputed by a reviewer. Every one reproduced the starting check of 48,233 MODIS and 198,916 Suomi NPP hotspots and the ratio of 0.2425. A fourth follow-up, run later the same day, repeated the class test with rank classes and with the combined VIIRS series. It is reported last, under [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series).
+Three questions that the first version of this document listed as missing were tested afterwards. Each was run by an analyst and then re-run and independently recomputed by a reviewer. Every one reproduced the starting check of 48,233 MODIS and 198,916 Suomi NPP hotspots and the ratio of 0.2425. A fourth follow-up, run later the same day, repeated the class test with rank classes and with the combined VIIRS series. It is reported under [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series). A fifth follow-up, on small areas, comes last, under [A season in place of a month](#a-season-in-place-of-a-month).
 
 ### A baseline of the real length
 
@@ -471,6 +474,46 @@ In the second row the combined series is also used for the VIIRS years of the ba
 - **Weak** for the effect of benchmark length, for which scheme tolerates a level error better, and for the 2018–2021 box results.
 - **Limits.** Every benchmark has four to eight years, against the 14 a real VIIRS-only baseline has. The intervals rest on ten test years (the first row of the table) or four (the other two), and do not resample the baseline years, so they are too narrow. The circles share their years with the box and with each other. The real record has no known answer. The NOAA-20 and NOAA-21 scale factors were fitted on data that include the test months. Circles of 25 km were not run, and the two-satellite test used only the box and 100 km.
 
+### A season in place of a month
+
+Detail: [s01](harmonization-tests-research/s01-season-rank.md).
+
+**The question.** In a small area most months cannot be classed, because too many years tie at zero or near it. Does classing June to September as a whole, in place of a single month, class more periods, and does the converted baseline still give the right class?
+
+**Terms.** A *season* is the sum of the months June to September in one year. The test is the class test above with a season in place of a month. It uses the nine stable years without 2020, because Aqua was out in August and September 2020 and a season needs every month, and all 126 ways of taking four of those years as the pretend MODIS era. The benchmark again has four VIIRS years.
+
+**Rank classes, June to September.** "Right, of all periods" counts every circle-period, classable or not.
+
+| Radius | Period | Truth can be classed | Converted baseline: same class | Benchmark: same class | Gain, points | Right, of all periods |
+|---|---|---|---|---|---|---|
+| 25 km | Month | 25% | 91% | 66% | +24.8 (18.9 to 32.9) | 23% |
+| 25 km | Season | 61% | 81% | 57% | +24.5 (17.5 to 30.8) | 50% |
+| 50 km | Month | 60% | 78% | 57% | +21.7 (18.2 to 25.4) | 47% |
+| 50 km | Season | 96% | 84% | 58% | +25.4 (19.3 to 31.8) | 81% |
+| 100 km | Month | 97% | 81% | 58% | +22.9 (17.6 to 28.1) | 79% |
+| 100 km | Season | 100% | 90% | 61% | +29.4 (18.9 to 39.1) | 90% |
+
+- **A summer in a 50 km circle behaves like a month in a 100 km circle:** 96% classable and 84% right, against 97% and 81%.
+- **The converted baseline keeps its gain** over the short VIIRS-only benchmark at every radius.
+- **Under ratio classes the season is where converting starts to pay in small areas.** For single summer months the converted baseline is 11.3 points behind the benchmark at 25 km and level at 50 km (−0.2). For a season it is level at 25 km (+2.6) and 13.7 points ahead at 50 km (8.9 to 18.5).
+- **25 km is still hard.** 39% of summers cannot be classed. Suomi NPP itself recorded nothing in 36% of circle-summers, and MODIS recorded nothing in 35% of those in which Suomi NPP saw fire (43% for months). At 50 km that share falls from 31% for months to 10% for seasons.
+- **The window should stay inside May to September.** In a 50 km circle the median Suomi NPP count is 203 hotspots for April to October and 28 for June to September, so in an ordinary year a longer season is mostly spring and autumn burning.
+
+**On the real record,** with the rules of `harmonize.py` (the same period in the other years of 2001–2025, at least eight of them, no class when 20% or more tie), share of June-to-September periods given a class, mean over the 31 circles:
+
+| Radius | Months, 2001–2025 | Summers, 2001–2025 | Months, 2012–2025 | Summers, 2012–2025 |
+|---|---|---|---|---|
+| 25 km | 23% | 56% | 29% | 67% |
+| 50 km | 55% | 99% | 63% | 99% |
+| 100 km | 93% | 100% | 95% | 100% |
+
+The app's six preset areas can class every summer of 2001–2025. By month they class between 56% and 91% of June-to-September months.
+
+**How strong.**
+
+- **Moderate.** One analyst ran it and no second analyst re-ran it. Before starting, the harness reproduced the published class-test numbers exactly, on the box and at 100, 50 and 25 km. A separate script recomputed the shares that can be classed and the MODIS-zero rates from the hotspot table and matched them to 0.1 point.
+- **Limits.** Nine seasons per circle and 279 circle-seasons per radius. The circles overlap and the splits reuse the same years, so the intervals are too narrow; the standard deviation across splits is 9 to 26 points. The benchmark has four years against the real 14. A season gives one label a year where months give four.
+
 ## Approaches borrowed from other fields
 
 Detail: [a03](harmonization-tests-research/a03-thinning-model.md), [a07](harmonization-tests-research/a07-box-counting.md), [a08](harmonization-tests-research/a08-completeness.md), [a09](harmonization-tests-research/a09-drift-curve.md), [a10](harmonization-tests-research/a10-diagnostics.md), [a11](harmonization-tests-research/a11-latent-models.md), [w01](harmonization-tests-research/w01-crossfield-sources-a.md), [w02](harmonization-tests-research/w02-crossfield-sources-b.md).
@@ -527,10 +570,48 @@ During this work the AI assistant was asked to rank methods and suggested a five
 | Convert with one overlap factor, split by day and night | Fitting on the whole box over the stable years; labels barely move with the factor. No refinement of one all-hours factor gave better labels. | The split: 7 points worse over all months, and the two factors moved −23% and +46% within the decade. A seasonal night factor is still 4.7 points worse over all months; a split in the fire season only is level but may cost a few points. A size-dependent factor is no better. Any single factor runs 15–27% high in quiet fire-season periods and about a third low in typical November-to-March months. | Size-dependent factors other than the two forms tried. |
 | Use MODIS to 2011 and VIIRS from 2012; flag drifted MODIS | VIIRS from 2012 avoids the drift. Flagging is what the data support for three of the four MODIS passes. The order of converted years holds. On the stable years, a converted era of the real composition gives the right class in 87% of fire-season months. | The level before 2012 cannot be validated and is plausibly high for small seasons. On the real 24-year baseline, 39% of box fire-season labels differ from VIIRS-only, against about 22% from the change of length alone, and the excess pushes months lower. | Whether that excess is real pre-2012 burning or conversion level. The Terra-only years against a known answer. The gain over a VIIRS-only baseline of the real length, 14 years: every benchmark tested had four to eight. |
 | Validate on held-out years; show intervals and coarse classes | Whole years are the right unit. Size-grouped intervals hold for 10 or more predicted hotspots. | No honest interval below 10. A per-month interval omits the shared error of the factor. Coarse classes agree more partly because there are fewer. | Class probabilities; intervals for circles. |
-| Show converted history only from about 100 km radius | 100 km is where it beats the VIIRS-only baseline on every measure. | At 50 km it is already slightly ahead on exact class, so the cut is cautious. Near Kamloops a small-area VIIRS record depends on removing the static site. | Regional context, a season in place of a month, and presence or absence, as displays. |
+| Show converted history only from about 100 km radius | 100 km is where it beats the VIIRS-only baseline on every measure. | At 50 km it is already slightly ahead on exact class, so the cut is cautious. Near Kamloops a small-area VIIRS record depends on removing the static site. | Regional context and presence or absence, as displays. A season in place of a month was tested later: at 50 km, 96% of summers can be classed and the converted baseline gains 25 points. |
 | Alternative: compare in MODIS-equivalent terms by thinning VIIRS | By expectation it gives the same class as scaling up. It is the direction that interpolates. | Random thinning is worse and does not fix zeros. | How users would read numbers about four times smaller than the counts shown for the current month. |
 | Class a month by rank instead of by its ratio to the median | The converted baseline's gain holds: 25.9 points on the box and 17.0 at 100 km in the fire season. On the real record the box shows no clear excess of changed labels over the change of length (29.6% against 24.3% expected). | Not clearly less sensitive to the level of the converted years: 11.3 points lost at 1.6 times, against 13.2 under ratio classes. A longer baseline alone moves rank labels more often (24% against 21%). Ties at zero leave 30% of fire-season months without a class at 50 km. | How much of the larger gain comes from the benchmark's four-year baseline. |
 | Use converted years only in June to September | On the real record 12 of 56 box labels differ from VIIRS-only in that window under either scheme, against 35 or 29 of 98 for April to October. The gain in the class test holds in every window. | The class test favours converted years in every month, including November to March (box gain 10.9 points under ratio classes and 9.0 under rank classes). The narrow window has few months. | Which label is right in April, May and October. The real record has no known answer. |
+
+## Changes made to `harmonize.py`
+
+On 2026-11-14 three changes were made to `harmonize.py` from the results above. Each has tests in `test_app.py`.
+
+**1. Outage days added.** Days on which a satellite sent nothing no longer count as days in service. On every day in the table, old and new, the satellite has no hotspots in the team's data.
+
+| Satellite | Days added (local dates) |
+|---|---|
+| Suomi NPP | 25 March 2012; 26 July 2023; 30 May – 3 June, 10–15 July, 24–28 July and 26 September 2024; 5–7 July 2025; 28 April and 1–2 June 2026 |
+| NOAA-20 | 19–22 July 2023 (normal scenes, no hotspots); 30 September 2023; 4 February 2024 |
+| NOAA-21 | 27–28 February 2024; 10–13 January 2026 |
+| Terra | 14 April 2002; 10–11 February 2003; 2–4, 6–7, 9 and 11–13 October 2003; 18 February 2004; 20 June and 22 August 2006; 20–22 December 2008; 12–15 May 2025; 4–9 March 2026. Two gaps widened to the catalogue's: 18–26 February 2016 and 10–22 October 2022 |
+| Aqua | 30 July – 7 August 2002; 13 September and 15 November 2002; 14 March and 12 May 2003 |
+
+- The source is the list of days with no scene in NASA's granule catalogue ([f03](harmonization-tests-research/f03-availability-flag.md)), including its gaps before 2012, plus the NOAA-20 loss of July 2023.
+- Two catalogue days were left out because FIRMS has hotspots from the satellite on them: Terra on 14 October 2003 and NOAA-21 on 14 January 2026.
+- A new test fails if a VIIRS satellite counted as in service has no hotspots on a day when the VIIRS satellites together have 300 or more. Before the change it failed on 21–22 July 2023 and on 24 and 28 July 2024, and on no other day.
+
+**2. Factor fitted on the stable-orbit years.** The factor is now fitted on February 2012 to December 2021, not to December 2025. It moves from 8.73 to 8.64. Its yearly range is unchanged (6.2 to 10.1). The months of 2022 to 2025 stay in the app's check of MODIS against VIIRS, where they now test the factor on years it was not fitted on.
+
+**3. A summer rating added.** `summer_table` ranks June to September of each year against the other summers by the months' rules, from the result under [A season in place of a month](#a-season-in-place-of-a-month). Its value is the mean of the four monthly index values. The calendar shows it as a column.
+
+**What moved.** Whole box, index before and after: July 2024 +13.4%, October 2003 +15.8%, August 2002 +11.6%, July 2023 +5.7%. Over the whole box and the app's six preset areas, 19 of 2,191 monthly ratings changed, none by more than one class. The fit years alone changed none.
+
+**Check against area burned, on the app's own index after the changes.** Yearly totals for the whole box against BC area burned, 2003–2025:
+
+| Measure | Harmonized index | All hotspots from all satellites added up |
+|---|---|---|
+| Rank correlation, April to October | 0.88 (0.66–0.97) | 0.75 (0.45–0.90) |
+| Rank correlation, June to September | 0.98 (0.90–1.00) | 0.91 (0.77–0.97) |
+| Pairs of years either side of 2012 ordered as area burned | 84% of 126 | 70% of 126 |
+
+- The six largest seasons by area burned are the six largest by index, with 2003 and 2018 swapped. With provisional 2026 records added, 2026 is second of 26 years in both, behind 2021.
+- This matches the earlier result on the tests' own series (0.88, 84%, the same six seasons; [a05](harmonization-tests-research/a05-pre2012-check.md)), so the app's index behaves as the tested series did.
+- MODIS alone, per satellite, scores the same as the harmonized index (0.88). The check shows the harmonized record is as good as a single sensor and better than adding the satellites up. The correlation intervals overlap.
+- In 19 of the 20 wrongly ordered pairs across 2012, the earlier year is ranked too high, as before.
+- Script: `data/harmonization-analysis/round6/scripts/s04_area_burned.py`, outside version control.
 
 ## Corrections to earlier documents
 
@@ -553,7 +634,7 @@ The follow-up tests answered three items listed here at first: a baseline of the
 1. Whether the excess in label changes on the real baseline is real burning before 2012 or a conversion level about 1.6 times too high. The data in hand cannot separate them.
 2. The gain of a converted baseline over a VIIRS-only baseline of the real length, 14 years. Every benchmark tested had four to eight years, and the gain did not change steadily with length.
 3. The effect of the winter undershoot on converted 2003–2011, when November to March held a quarter of MODIS hotspots, against 10% in the overlap years.
-4. Small-area displays scored fairly: regional context, a season in place of a month, presence or absence.
+4. Small-area displays scored fairly: regional context, and presence or absence. A season in place of a month has now been tested; see [A season in place of a month](#a-season-in-place-of-a-month). It was run by one analyst, so an independent re-run is still open.
 5. Class probabilities, and any honest interval for months under about 10 predicted hotspots.
 6. An independent daily fire cycle for the region, to check the fitted 13.4 h peak before a Terra correction is relied on.
 7. The reliability of NOAA-20 on 1 April to 4 June 2018, which the catalogue does not cover and which is assumed available.
@@ -566,7 +647,7 @@ The follow-up tests answered three items listed here at first: a baseline of the
 
 ## Changes since first compiled
 
-Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests). The row on the Kamloops fixed heat source is a judgment made by the team on the same day, not a test result. The rows after it come from the fourth follow-up, [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series).
+Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests). The row on the Kamloops fixed heat source is a judgment made by the team on the same day, not a test result. The rows after it come from the fourth follow-up, [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series). The last two rows come from the fifth follow-up and from the changes made to `harmonize.py` the same day.
 
 | Date | Statement | First compilation | Now | Source |
 |---|---|---|---|---|
@@ -585,6 +666,8 @@ Each change was made in place above, on 2026-11-14, from the three follow-up tes
 | 2026-11-14 | Labels that differ on the real record between the mixed and VIIRS-only baselines | 41 of 105 box fire-season months, with a stand-in VIIRS series and ratio classes | Unchanged, and reproduced. Added the same count with the combined series for 2012–2025 (35 of 98 under ratio classes, 29 of 98 under rank classes) and by window. | [h04](harmonization-tests-research/h04-real-record-rank-classes.md) |
 | 2026-11-14 | The pipeline table | Six rows | Two rows added, on rank classes and on a June-to-September window | [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) |
 | 2026-11-14 | "At a glance" | Fifteen points | Three points added from the fourth follow-up | [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) |
+| 2026-11-14 | Small-area displays ("User-sized areas"; the pipeline table; "What is still missing" item 4; "At a glance") | A season in place of a month listed as untested | Tested in a fifth follow-up: in 50 km circles 96% of summers can be classed, against 60% of months. One point added to "At a glance". | [s01](harmonization-tests-research/s01-season-rank.md) |
+| 2026-11-14 | "How this relates to the team's recommended method" | `harmonize.py` lacks the catalogue's gaps and fits its factor through 2025 | The gaps were added and the factor is fitted on 2012–2021. A new section, "Changes made to `harmonize.py`", records the changes, what moved, and the check of the app's index against area burned. | [f03](harmonization-tests-research/f03-availability-flag.md), [s01](harmonization-tests-research/s01-season-rank.md) |
 
 ## How this was produced
 
@@ -615,9 +698,11 @@ Each change was made in place above, on 2026-11-14, from the three follow-up tes
 | [h03-forward-configuration.md](harmonization-tests-research/h03-forward-configuration.md) | Fourth follow-up: NOAA-20 and NOAA-21 against a mixed baseline, 2022–2026 |
 | [h04-real-record-rank-classes.md](harmonization-tests-research/h04-real-record-rank-classes.md) | Fourth follow-up: the real record under rank classes |
 | [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) | Fourth follow-up: reconciled numbers and spot checks |
+| [s01-season-rank.md](harmonization-tests-research/s01-season-rank.md) | Fifth follow-up: in a small area, does classing a season in place of a month help? (single agent, not independently reviewed) |
 
 - **AI assistance.** The tests, source checks and this write-up were produced with AI agents (Claude) on 14 November 2026: 29 agents ran and checked the analyses, and the results were aggregated into this document. The cross-field approaches were proposed by the AI assistant from memory and then sourced and tested. The Space Apps submission guide requires that such use be acknowledged, and says AI should not be used to come up with the idea of how to solve the challenge. The choice of method is the team's.
 - **AI assistance in the follow-ups.** The three follow-up tests were run later on 14 November 2026 by AI agents (Claude): for each, one agent ran the analysis and a second re-ran it and recomputed it independently. The review of the real-length baseline added two remedies to those the analyst tested. The section "Follow-up tests", the updates elsewhere in this document and the corrections listed under "Changes since first compiled" were written by an AI agent from those working files. A final review by an AI agent the same day re-checked them against the working files and the catalogue, and carried the follow-up results into the other three documents.
 - **AI assistance in the fourth follow-up.** On 14 November 2026 the team asked the AI assistant (Claude) for a single best option. It suggested classing months by rank and taking the current month from the combined VIIRS series, and noted that neither had been through the class test. The team asked for that test. Nine AI agents ran it: four analyses, each re-run and independently recomputed by a second agent, and a cross-check that rebuilt the headline numbers with its own code. The assistant wrote the shared definitions beforehand and wrote the section "Rank classes and the combined VIIRS series" from the working files. The test contradicted one thing the assistant had suggested: rank classes are not clearly less sensitive to the level of the converted years.
+- **AI assistance in the fifth follow-up.** On 14 November 2026 the team asked the AI assistant (Claude) whether any approach had been left out. Among its suggestions was classing a season in place of a month in small areas, which this document had listed as untested, and the team asked for that test. One AI agent ran it: it reproduced the published class-test numbers first, ran the test, and recomputed the numbers that do not depend on the splits with a separate script. No second agent reviewed it. The same agent then made the three changes to `harmonize.py`, with tests written first, and wrote the sections "A season in place of a month" and "Changes made to `harmonize.py`".
 - **Limits of the whole exercise.** One box and ten stable-orbit years, dominated by three large fire seasons (2017, 2018, 2021). The 202 splits reuse those ten years, so the spread across splits understates the uncertainty. The answer each design is scored against is a nine-year VIIRS median, not fire itself.
 - **Scripts and tables.** The working files name the scripts and result tables behind each number. Those are kept outside version control with the cached data.

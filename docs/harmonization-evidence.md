@@ -177,6 +177,8 @@ Detail: [m08](harmonization-evidence-research/m08-spatial-scale.md). Values are 
 
 Count scaling is marginal at 50 km and usable from about 100 km. A class against the monthly median can be computed for every fire-season month only from about 100 km, because the MODIS median is zero for most months below that. The data support several fallbacks for smaller areas: the anomaly of an enclosing larger area, a season in place of a month, presence or absence only, or the VIIRS-only record from 2012.
 
+**Later result.** One of those fallbacks, a season in place of a month, was tested afterwards. In 50 km circles 96% of June-to-September seasons can be classed by rank, against 60% of single months, and the converted baseline gives the true class in 84% of them. In 25 km circles the share rises from 25% to 61%. Detail: [A season in place of a month](harmonization-tests.md#a-season-in-place-of-a-month).
+
 ### Other findings
 
 - **Month boundaries.** Terra's evening pass falls after midnight UTC. Keying months by UTC date moved 455 MODIS hotspots from 30 June 2021 into July. Keying by local date avoids this.
@@ -282,6 +284,7 @@ Each correction was made in place above, on 2026-11-14, from the later tests in 
 | 2026-11-14 | "What is still missing", items 1, 2 and 5 | Real-length baseline, split factors at circle scale, and the flag applied throughout listed as open | Answered by the follow-up tests, with what remains open stated | [f01](harmonization-tests-research/f01-real-length-baseline.md), [f02](harmonization-tests-research/f02-factor-refinements.md), [f03](harmonization-tests-research/f03-availability-flag.md) |
 | 2026-11-14 | What the Kamloops static source is ("At a glance" point 8; "Other findings") | The facility was not identified | Likely the Kruger pulp mill at 2005 Mission Flats Road, 0.4 km from the source. This is the team's judgment from position and persistence, not a test result, and no source confirms it. | [harmonization-tests.md](harmonization-tests.md#static-and-recurring-sources), [w03](harmonization-tests-research/w03-data-availability.md#6-the-fixed-heat-source) |
 | 2026-11-14 | "What is still missing", item 1 | Class comparison made with ratio classes and a Suomi NPP current month only | Added the fourth follow-up: the gain holds under rank classes and with the current month from the combined series or from NOAA-20 and NOAA-21 only. The gain over a 14-year VIIRS-only baseline is listed as open. | [harmonization-tests.md](harmonization-tests.md#rank-classes-and-the-combined-viirs-series) |
+| 2026-11-14 | Fallbacks for small areas ("Area size") | A season in place of a month listed as a fallback the data support | Tested: in 50 km circles 96% of summers can be classed against 60% of months. Run by one analyst, with no second reviewer. | [s01](harmonization-tests-research/s01-season-rank.md) |
 
 Two figures were not recomputed on the later definitions: the rank correlation of 0.97 and the share of months within one class (98%).
 
