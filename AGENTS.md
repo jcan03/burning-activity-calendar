@@ -23,7 +23,7 @@ Three further documents report what the team's own FIRMS data and the literature
 
 - [docs/harmonization-evidence.md](docs/harmonization-evidence.md): the first measurements on the team's data, arranged by the choices the team has to make. Read it before deciding how counts are converted, combined or compared.
 - [docs/harmonization-methods.md](docs/harmonization-methods.md): a catalogue of candidate methods with published precedent and effort. Read it when looking for a method or for precedent to cite.
-- [docs/harmonization-tests.md](docs/harmonization-tests.md): the latest tests, including three follow-ups, with how strong each result is. It is the newest of the three and wins where they differ. Read it before relying on any number.
+- [docs/harmonization-tests.md](docs/harmonization-tests.md): the latest tests, including four follow-ups, with how strong each result is. It is the newest of the three and wins where they differ. Read it before relying on any number.
 
 Findings that any code touching the hotspot record has to respect. Each is from those documents.
 

@@ -2,7 +2,7 @@
 
 Team reference for City of Kamloops & Co. It reports tests of the questions left open by [harmonization-evidence.md](harmonization-evidence.md) and trials of approaches borrowed from other fields, all run on the team's own FIRMS data. It says what each test shows and how strong the result is. It does not choose the team's method.
 
-Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run and independently recomputed by a reviewer. Two further topics (longer-shot models and data availability) were each handled by a single agent with no second reviewer. The sources behind the borrowed approaches were researched and then verified. A final pass reconciled numbers that differed between topics. Three follow-up tests, on questions this document first listed as missing, were then run by an analyst and re-run and recomputed by a reviewer in the same way; they are reported under [Follow-up tests](#follow-up-tests). The nineteen working files are in [harmonization-tests-research/](harmonization-tests-research/).
+Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run and independently recomputed by a reviewer. Two further topics (longer-shot models and data availability) were each handled by a single agent with no second reviewer. The sources behind the borrowed approaches were researched and then verified. A final pass reconciled numbers that differed between topics. Three follow-up tests, on questions this document first listed as missing, were then run by an analyst and re-run and recomputed by a reviewer in the same way; they are reported under [Follow-up tests](#follow-up-tests). A fourth follow-up, on rank classes and the combined VIIRS series, was run as four analyses, each re-run and recomputed by a reviewer, with a cross-check at the end. The twenty-five working files are in [harmonization-tests-research/](harmonization-tests-research/).
 
 **The data.** The same 737,244 FIRMS hotspots as before (box 49.0–52.5°N, 122.5–118.0°W, November 2000 to November 2026), with three changes: months are keyed by local date, the fixed heat source near Kamloops is removed, and only vegetation-fire rows and near-real-time rows are kept. On the 116 stable-orbit months this gives a MODIS-to-Suomi-NPP ratio of 0.2425 (0.343 by day, 0.177 at night), which every analysis reproduced before starting.
 
@@ -27,6 +27,9 @@ Compiled 2026-11-14. Eleven analyses were each run by an analyst and then re-run
 13. **NASA's open granule catalogue gives a per-day availability flag for each satellite.** It sees whole-day and half-day losses but not losses inside a scene. It found outages missing from the outage list used so far, and four listed gaps that are wrong or too wide. With it, the daily mean of the VIIRS satellites stays level through every real outage month.
 14. **Changing satellite changes labels on its own.** A current month taken from NOAA-20 instead of Suomi NPP gets a different class in about one fire-season month in seven on the box (13.5%), and in 14–23% of 100 km circle-months, even with a perfect conversion.
 15. **Of the approaches borrowed from other fields, the useful ones are diagnostics and explanations, not converters.** None beat one factor at predicting counts.
+16. **The converted baseline still wins when months are classed by rank.** On the whole box it gains 25.9 points over a short VIIRS-only baseline in the fire season, against 18.2 points under the ratio classes used above. Part of the larger gain probably comes from how coarse a four-year baseline is under rank classes.
+17. **It still wins when the month being classed does not come from Suomi NPP.** With NOAA-20 and NOAA-21 only, as from November 2026, the label matches the full record's in 86.5% of fire-season months on the box under ratio classes, against 66.3% for the VIIRS-only benchmark. Against the same baseline, the two-satellite series gives the same label as the three-satellite series in 97.7% of months.
+18. **Rank classes are not clearly less sensitive to the level of the converted years, and June to September is where the real record depends on them least.** There, 12 of 56 box labels differ from a VIIRS-only baseline under either scheme, against 35 of 98 for April to October under ratio classes and 29 of 98 under rank classes. The gain over a VIIRS-only baseline of the real length, 14 years, is still unmeasured.
 
 ## How this relates to the team's recommended method
 
@@ -191,7 +194,7 @@ Detail: [a12](harmonization-tests-research/a12-static-sources.md), [w03](harmoni
 
 ## Follow-up tests
 
-Three questions that the first version of this document listed as missing were tested afterwards. Each was run by an analyst and then re-run and independently recomputed by a reviewer. Every one reproduced the starting check of 48,233 MODIS and 198,916 Suomi NPP hotspots and the ratio of 0.2425.
+Three questions that the first version of this document listed as missing were tested afterwards. Each was run by an analyst and then re-run and independently recomputed by a reviewer. Every one reproduced the starting check of 48,233 MODIS and 198,916 Suomi NPP hotspots and the ratio of 0.2425. A fourth follow-up, run later the same day, repeated the class test with rank classes and with the combined VIIRS series. It is reported last, under [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series).
 
 ### A baseline of the real length
 
@@ -384,6 +387,90 @@ The combined series changes 10% of fire-season box months and 16% at 100 km, whi
 - **Moderate** for the label noise. The intervals rest on 7–10 years (3–4 for NOAA-21), and the circle intervals are optimistic because circles overlap.
 - **Limits.** The count-check simulations were re-run from the analyst's scripts, not reimplemented, and its thresholds were chosen after looking at the data. NOAA-20 on 1 April to 4 June 2018 is assumed available, though Suomi NPP saw 1.38 times NOAA-20's hotspots in July 2018. The flag for November 2026 is unverified.
 
+### Rank classes and the combined VIIRS series
+
+Detail: [h01](harmonization-tests-research/h01-rank-classes-hindcast.md), [h02](harmonization-tests-research/h02-current-month-source.md), [h03](harmonization-tests-research/h03-forward-configuration.md), [h04](harmonization-tests-research/h04-real-record-rank-classes.md), [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md). Shared definitions: [h00](harmonization-tests-research/h00-definitions.md).
+
+**The question.** Every class test above classed a month by its ratio to the calendar-month median, and took the month being classed from Suomi NPP alone. Does the result hold when months are classed by rank? Does it hold when the month being classed comes from the combined VIIRS series, or from NOAA-20 and NOAA-21 only, as it must from November 2026?
+
+**Terms.**
+
+- *Ratio classes* are the five classes used above.
+- *Rank classes* place a month by its percentile among the same calendar month in the other years, in five equal steps. A month gets no class when 20% or more of the baseline ties with it.
+- The *combined series* is the daily mean of the available VIIRS satellites, each scaled to Suomi NPP, summed over the month, as in the previous section. The *two-satellite series* is the same with NOAA-20 and NOAA-21 only.
+- The *benchmark* is the short VIIRS-only baseline, as before.
+- Agreement rates are not comparable between the two class schemes, because their classes have different base rates. Gains over the benchmark within one scheme are.
+
+**The class test under both schemes.** Fire season. Each cell gives the share of months given the true class with the converted baseline, the same share with the benchmark, and the gain in points.
+
+| Month being classed | Scope | Ratio classes | Rank classes |
+|---|---|---|---|
+| Suomi NPP, test years 2012–2021 (the test above) | Box | 84.4% / 66.1% / +18.2 (13.8 to 22.7) | 86.2% / 60.3% / +25.9 (18.8 to 33.8) |
+| | 100 km circles | 77.4% / 66.7% / +10.6 (8.3 to 13.1) | 73.9% / 56.8% / +17.0 (13.1 to 20.9) |
+| Combined series, April 2018 to December 2021 | Box | 90.4% / 72.8% / +17.6 (7.7 to 22.2) | 87.6% / 66.6% / +21.0 (15.6 to 30.1) |
+| | 100 km circles | 79.6% / 71.4% / +8.2 (5.3 to 10.7) | 75.2% / 66.3% / +9.0 (2.9 to 13.5) |
+| Two-satellite series, March 2023 to October 2026 | Box | 86.5% / 66.3% / +20.2 (14.7 to 26.0) | 82.2% / 60.0% / +22.2 (17.5 to 28.8) |
+| | 100 km circles | 82.3% / 73.7% / +8.6 (6.1 to 11.8) | 79.0% / 61.6% / +17.4 (13.5 to 21.9) |
+
+In the second row the combined series is also used for the VIIRS years of the baseline and for the truth. In the third row the baseline is built from the ten stable years, MODIS is not used for the test years, and the truth is the three-satellite combined series classed against ten years of Suomi NPP. The benchmark has four VIIRS years in the first two rows and five in the third.
+
+- **The result holds under rank classes.** The gain is positive in all 31 circles at 100 km under both schemes. Over all months the box gain is 15.2 points under ratio classes and 18.9 under rank classes.
+- **Part of the larger gain under rank classes is probably the benchmark's.** With four baseline years, one place in rank moves a month a whole class. This reading was not tested.
+- **A single converted month** gets the same class as the actual Suomi NPP month in 69.1% of 68 fire-season months under ratio classes and 76.5% under rank classes.
+- **The source of the current month matters little on the box.** Taking it from NOAA-20 or from the combined series instead of Suomi NPP changed agreement by between −6.9 and +4.1 points, and every interval includes zero. This rests on 26 fire-season months in four test years.
+- **In 100 km circles it matters more, but the measured loss is an upper bound.** A NOAA-20 month agrees with Suomi NPP's own label 11.7 points less often under ratio classes and 9.9 under rank classes; the combined series loses 6.1 and 5.1. Against a truth built from the combined series, NOAA-20's loss is 0.7 points (−5.7 to +2.0). No truth in these years is independent of both satellites.
+- **That loss is scatter between satellites, not scale.** Changing NOAA-20's scale factor between 1.0, 1.0245 and a value fitted on the test months moved agreement by at most 1.6 points.
+- **After Suomi NPP, the two-satellite series is close to the three-satellite one.** Against the same baseline it gives the same label in 97.7% of box months under ratio classes and 95.5% under rank classes, and the two totals over March 2023 to October 2026 differ by 0.1%. In single months the ratio runs from 0.74 to 1.12; the five months outside 0.90 to 1.10 all had fewer than about 120 hotspots.
+- **In the two-satellite test the label is within one class of the full record's** in 99.5% of fire-season box months under ratio classes and 99.8% under rank classes.
+- **At 50 km the limit is months with no class.** On the real record, 37% of fire-season circle-months cannot be classed under ratio classes and 30% under rank classes. Where the truth, the converted baseline and the benchmark can all class a month, the converted baseline gains 10.8 points under ratio classes and 15.7 under rank classes, in line with [User-sized areas](#user-sized-areas).
+
+**Length of the benchmark.** The real VIIRS-only baseline has 14 years, not four. The class test was repeated with one to five pretend MODIS years, over every possible split, so that the benchmark has eight down to four years. Whole box, fire season, gain in points:
+
+| Years in the VIIRS-only benchmark | 8 | 7 | 6 | 5 | 4 |
+|---|---|---|---|---|---|
+| Ratio classes | 12.7 | 9.0 | 14.1 | 13.6 | 17.1 |
+| Rank classes | 10.9 | 15.8 | 23.0 | 28.7 | 24.9 |
+
+- The gain does not shrink steadily as the benchmark gets longer, and every interval stays above zero.
+- With eight years the two baselines differ by a single year, and the benchmark still gives a different label in about one fire-season month in six.
+- The range tested stops at eight years against a truth of nine. The gain over a 14-year VIIRS-only baseline cannot be read from this table.
+
+**A wrong level in the converted years.** In the class test, the converted values were multiplied by a constant. Change in the converted baseline's agreement, whole box, fire season, in points:
+
+| Converted values multiplied by | 0.8 | 1.15 | 1.27 | 1.6 |
+|---|---|---|---|---|
+| Ratio classes | −0.1 | −1.4 | −5.2 | −13.2 (−18.0 to −8.2) |
+| Rank classes | −1.8 | −4.8 | −7.2 | −11.3 (−15.2 to −5.9) |
+
+- **Neither scheme is clearly less sensitive.** The difference between the two includes zero at every level, on the box and at 100 km (−8.2 and −8.3 points at 1.6).
+- Even at 1.6 the converted baseline stays ahead of the benchmark: 71.1% against 66.1% under ratio classes, and 74.9% against 60.3% under rank classes.
+
+**On the real record.** This repeats the comparison under [A baseline of the real length](#a-baseline-of-the-real-length) with the combined series as the VIIRS record for 2012–2025. It first reproduced that section's 41 of 105 labels with the earlier stand-in series. Labels that differ between the mixed 2003–2025 baseline and the VIIRS-only 2012–2025 baseline:
+
+| Window | Box, ratio classes | Box, rank classes | 100 km circles, ratio | 100 km circles, rank |
+|---|---|---|---|---|
+| April to October | 35 of 98 (31 lower) | 29 of 98 (24 lower) | 37.0% | 34.2% |
+| May to September | 20 of 70 | 16 of 70 | 28.0% | 26.1% |
+| June to September | 12 of 56 | 12 of 56 | 23.3% | 23.1% |
+| November to March | 26 of 69 | 17 of 69 | 30.9% | 33.6% |
+
+- **Under rank classes the box shows no clear excess over the change of length.** Length alone would change 24.3% of fire-season labels; 29.6% changed (p about 0.19). Under ratio classes 35.7% changed against 21.4% expected (p 0.024 to 0.033). With 14 evaluated years this is a weak negative.
+- **In the circles an excess remains under both schemes:** 37.0% against 21.1% under ratio classes (p 0.001 or below) and 34.2% against 24.2% under rank classes (p about 0.026).
+- **The direction is the same as before.** The mixed baseline gives the lower class in most changed months (p 0.07 or below in every case).
+- **The changes fall in spring and autumn.** On the box under ratio classes, of 14 years: October 9, May 8, November 8, April 6, June 6 and March 5, all lower; December 10 and July 4, all higher. Under rank classes: April 8, November 8, March 5, June 5, October 5 and May 4, all lower; July 3, December 3 and August 2, all higher.
+- **Dividing the converted years by 1.6** changes 23 of 98 box fire-season labels under ratio classes and 18 under rank classes. The difference is 5.1 points (−4 to +13). Over all months the two are equal (40 and 41 of 167).
+- **In 2026,** the box labels for January to October differ between the two baselines in three months under ratio classes (April, May and October) and in two under rank classes (April and June). July and August are in the top class under every scheme and baseline.
+- **The choice of VIIRS series matters less than the choice of baseline.** The combined series against the earlier stand-in changes about 5% of box labels and 10–14% of circle labels.
+
+**The window for converted years.** Narrowing from April–October to June–September removes April, May and October, which hold most of the downward changes on the real record. The gain in the class test holds in each window. Whole box, Suomi NPP as the month being classed, for April–October, May–September and June–September: 18.2, 15.0 and 16.5 points under ratio classes, and 25.9, 29.3 and 30.3 under rank classes. The narrower windows have few months. In the two-satellite test, 70% of June-to-September box months are in the top ratio class, which makes that window an easy case.
+
+**How strong.**
+
+- **Strong** for the sign of the gain under rank classes, and for the reproductions. Each analysis was re-run, and an independent script matched its point estimates to 0.1 point. The cross-check rebuilt the headline numbers with its own code and found no number that differed between topics in a way that made one of them wrong.
+- **Moderate** for the size of the gain under rank classes against ratio classes, for the two-satellite test, and for the excess on the real record. In the two-satellite test the gain was negative in up to 7% of single splits on the box.
+- **Weak** for the effect of benchmark length, for which scheme tolerates a level error better, and for the 2018–2021 box results.
+- **Limits.** Every benchmark has four to eight years, against the 14 a real VIIRS-only baseline has. The intervals rest on ten test years (the first row of the table) or four (the other two), and do not resample the baseline years, so they are too narrow. The circles share their years with the box and with each other. The real record has no known answer. The NOAA-20 and NOAA-21 scale factors were fitted on data that include the test months. Circles of 25 km were not run, and the two-satellite test used only the box and 100 km.
+
 ## Approaches borrowed from other fields
 
 Detail: [a03](harmonization-tests-research/a03-thinning-model.md), [a07](harmonization-tests-research/a07-box-counting.md), [a08](harmonization-tests-research/a08-completeness.md), [a09](harmonization-tests-research/a09-drift-curve.md), [a10](harmonization-tests-research/a10-diagnostics.md), [a11](harmonization-tests-research/a11-latent-models.md), [w01](harmonization-tests-research/w01-crossfield-sources-a.md), [w02](harmonization-tests-research/w02-crossfield-sources-b.md).
@@ -432,16 +519,18 @@ Detail: [w03](harmonization-tests-research/w03-data-availability.md).
 
 ## What the tests say about a provisional pipeline
 
-During this work the AI assistant was asked to rank methods and suggested a five-piece pipeline, and later an alternative. The team has not adopted either. The tests bear on each piece as follows.
+During this work the AI assistant was asked to rank methods and suggested a five-piece pipeline, and later an alternative. Asked again on 14 November for a single best option, it suggested classing months by rank and using converted years only in June to September; the last two rows cover those. The team has not adopted any of these. The tests bear on each piece as follows.
 
 | Piece | Supported by | Undercut by | Not tested |
 |---|---|---|---|
-| Combine VIIRS satellites as a daily mean of those with data | The earlier evidence. The availability flag it needs was built from the open catalogue and applied day by day; unlisted gaps had moved one yearly ratio by 12%. The combined series stays level through every real outage month and at each change in the number of satellites. | The flag cannot see losses inside a scene; a count check finds only large ones in busy periods. It is not verified for the current month and missed 4–6 August 2026. A NOAA-20 current month changes about one fire-season label in seven against Suomi NPP's own, before any conversion error. | The combined series as the current month inside the mixed-baseline class test. Label changes were measured only against Suomi NPP's own label. |
+| Combine VIIRS satellites as a daily mean of those with data | The earlier evidence. The availability flag it needs was built from the open catalogue and applied day by day; unlisted gaps had moved one yearly ratio by 12%. The combined series stays level through every real outage month and at each change in the number of satellites. Inside the class test, a current month from the combined series, or from NOAA-20 and NOAA-21 only, keeps the gain over the VIIRS-only benchmark (box fire season, ratio classes: 17.6 and 20.2 points). | The flag cannot see losses inside a scene; a count check finds only large ones in busy periods. It is not verified for the current month and missed 4–6 August 2026. A NOAA-20 current month changes about one fire-season label in seven against Suomi NPP's own, before any conversion error. | Whether the combined series gives a truer label than one satellite. No truth in 2018–2021 is independent of both Suomi NPP and NOAA-20. |
 | Convert with one overlap factor, split by day and night | Fitting on the whole box over the stable years; labels barely move with the factor. No refinement of one all-hours factor gave better labels. | The split: 7 points worse over all months, and the two factors moved −23% and +46% within the decade. A seasonal night factor is still 4.7 points worse over all months; a split in the fire season only is level but may cost a few points. A size-dependent factor is no better. Any single factor runs 15–27% high in quiet fire-season periods and about a third low in typical November-to-March months. | Size-dependent factors other than the two forms tried. |
-| Use MODIS to 2011 and VIIRS from 2012; flag drifted MODIS | VIIRS from 2012 avoids the drift. Flagging is what the data support for three of the four MODIS passes. The order of converted years holds. On the stable years, a converted era of the real composition gives the right class in 87% of fire-season months. | The level before 2012 cannot be validated and is plausibly high for small seasons. On the real 24-year baseline, 39% of box fire-season labels differ from VIIRS-only, against about 22% from the change of length alone, and the excess pushes months lower. | Whether that excess is real pre-2012 burning or conversion level. The Terra-only years against a known answer. |
+| Use MODIS to 2011 and VIIRS from 2012; flag drifted MODIS | VIIRS from 2012 avoids the drift. Flagging is what the data support for three of the four MODIS passes. The order of converted years holds. On the stable years, a converted era of the real composition gives the right class in 87% of fire-season months. | The level before 2012 cannot be validated and is plausibly high for small seasons. On the real 24-year baseline, 39% of box fire-season labels differ from VIIRS-only, against about 22% from the change of length alone, and the excess pushes months lower. | Whether that excess is real pre-2012 burning or conversion level. The Terra-only years against a known answer. The gain over a VIIRS-only baseline of the real length, 14 years: every benchmark tested had four to eight. |
 | Validate on held-out years; show intervals and coarse classes | Whole years are the right unit. Size-grouped intervals hold for 10 or more predicted hotspots. | No honest interval below 10. A per-month interval omits the shared error of the factor. Coarse classes agree more partly because there are fewer. | Class probabilities; intervals for circles. |
 | Show converted history only from about 100 km radius | 100 km is where it beats the VIIRS-only baseline on every measure. | At 50 km it is already slightly ahead on exact class, so the cut is cautious. Near Kamloops a small-area VIIRS record depends on removing the static site. | Regional context, a season in place of a month, and presence or absence, as displays. |
 | Alternative: compare in MODIS-equivalent terms by thinning VIIRS | By expectation it gives the same class as scaling up. It is the direction that interpolates. | Random thinning is worse and does not fix zeros. | How users would read numbers about four times smaller than the counts shown for the current month. |
+| Class a month by rank instead of by its ratio to the median | The converted baseline's gain holds: 25.9 points on the box and 17.0 at 100 km in the fire season. On the real record the box shows no clear excess of changed labels over the change of length (29.6% against 24.3% expected). | Not clearly less sensitive to the level of the converted years: 11.3 points lost at 1.6 times, against 13.2 under ratio classes. A longer baseline alone moves rank labels more often (24% against 21%). Ties at zero leave 30% of fire-season months without a class at 50 km. | How much of the larger gain comes from the benchmark's four-year baseline. |
+| Use converted years only in June to September | On the real record 12 of 56 box labels differ from VIIRS-only in that window under either scheme, against 35 or 29 of 98 for April to October. The gain in the class test holds in every window. | The class test favours converted years in every month, including November to March (box gain 10.9 points under ratio classes and 9.0 under rank classes). The narrow window has few months. | Which label is right in April, May and October. The real record has no known answer. |
 
 ## Corrections to earlier documents
 
@@ -459,10 +548,10 @@ During this work the AI assistant was asked to rank methods and suggested a five
 
 ## What is still missing
 
-The follow-up tests answered three items listed here at first: a baseline of the real length, a repaired day and night split, and the availability flag applied throughout with the scale factors re-estimated. See [Follow-up tests](#follow-up-tests).
+The follow-up tests answered three items listed here at first: a baseline of the real length, a repaired day and night split, and the availability flag applied throughout with the scale factors re-estimated. See [Follow-up tests](#follow-up-tests). The fourth follow-up answered one more, which was item 2 of this list: the current month taken from NOAA-20 or from the combined series inside the class test. Item 2 now holds what that test left open, and items 12 and 13 were added from it.
 
 1. Whether the excess in label changes on the real baseline is real burning before 2012 or a conversion level about 1.6 times too high. The data in hand cannot separate them.
-2. The current month taken from NOAA-20, or from the daily mean of the VIIRS satellites, inside the mixed-baseline class test. So far it has been compared only with Suomi NPP's own label.
+2. The gain of a converted baseline over a VIIRS-only baseline of the real length, 14 years. Every benchmark tested had four to eight years, and the gain did not change steadily with length.
 3. The effect of the winter undershoot on converted 2003–2011, when November to March held a quarter of MODIS hotspots, against 10% in the overlap years.
 4. Small-area displays scored fairly: regional context, a season in place of a month, presence or absence.
 5. Class probabilities, and any honest interval for months under about 10 predicted hotspots.
@@ -472,10 +561,12 @@ The follow-up tests answered three items listed here at first: a baseline of the
 9. NOAA-21 against MODIS directly. There is no stable-orbit overlap, only a chain through NOAA-20.
 10. Whether near-real-time and standard rows differ for the current month in anything besides the label. In 2026, Suomi NPP / NOAA-20 is 0.999 in the near-real-time months of August to October against 1.046 in January to July.
 11. The availability flag for the current month, which the near-real-time catalogue keeps for only about seven days.
+12. A truth for 2018–2021 that is independent of both Suomi NPP and NOAA-20, to show whether the combined series gives a truer label than a single satellite.
+13. How much of the larger gain under rank classes comes from the benchmark's short baseline and how much from the scheme.
 
 ## Changes since first compiled
 
-Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests). The last row is a judgment made by the team on the same day, not a test result.
+Each change was made in place above, on 2026-11-14, from the three follow-up tests reported under [Follow-up tests](#follow-up-tests). The row on the Kamloops fixed heat source is a judgment made by the team on the same day, not a test result. The rows after it come from the fourth follow-up, [Rank classes and the combined VIIRS series](#rank-classes-and-the-combined-viirs-series).
 
 | Date | Statement | First compilation | Now | Source |
 |---|---|---|---|---|
@@ -489,6 +580,11 @@ Each change was made in place above, on 2026-11-14, from the three follow-up tes
 | 2026-11-14 | "What is still missing" | Ten items | The three answered items removed; items found missing by the follow-ups added | [f01](harmonization-tests-research/f01-real-length-baseline.md), [f02](harmonization-tests-research/f02-factor-refinements.md), [f03](harmonization-tests-research/f03-availability-flag.md) |
 | 2026-11-14 | Which designs remove the fire-season bias ("Refinements of the factor") | The day and night designs (0.98–0.99) | The plain split (0.99) and the fire-season split (0.98); the seasonal night factor leaves 1.07 | [f02](harmonization-tests-research/f02-factor-refinements.md), Protocol A table |
 | 2026-11-14 | What the Kamloops fixed heat source is ("At a glance" point 12; "Static and recurring sources") | The nearest registered facility is a pulp mill 0.4 km away: "proximity, not identification" | Likely the Kruger pulp mill at 2005 Mission Flats Road, on the team's judgment from position and persistence. No source confirms it. | [w03](harmonization-tests-research/w03-data-availability.md#6-the-fixed-heat-source), [Kruger contact page](https://pulp.kruger.com/contact-us) |
+| 2026-11-14 | The month being classed in the class test (the pipeline table; "What is still missing" item 2) | Suomi NPP only; NOAA-20 and the combined series listed as untested | Tested with NOAA-20, the combined series and the NOAA-20 plus NOAA-21 series. The gain over the VIIRS-only benchmark holds. Item 2 replaced by what remains open. | [h02](harmonization-tests-research/h02-current-month-source.md), [h03](harmonization-tests-research/h03-forward-configuration.md) |
+| 2026-11-14 | Class scheme | Ratio to the calendar-month median only | Rank classes tested beside it. The gain holds; rank classes are not clearly less sensitive to the level of the converted years. | [h01](harmonization-tests-research/h01-rank-classes-hindcast.md), [h04](harmonization-tests-research/h04-real-record-rank-classes.md) |
+| 2026-11-14 | Labels that differ on the real record between the mixed and VIIRS-only baselines | 41 of 105 box fire-season months, with a stand-in VIIRS series and ratio classes | Unchanged, and reproduced. Added the same count with the combined series for 2012–2025 (35 of 98 under ratio classes, 29 of 98 under rank classes) and by window. | [h04](harmonization-tests-research/h04-real-record-rank-classes.md) |
+| 2026-11-14 | The pipeline table | Six rows | Two rows added, on rank classes and on a June-to-September window | [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) |
+| 2026-11-14 | "At a glance" | Fifteen points | Three points added from the fourth follow-up | [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) |
 
 ## How this was produced
 
@@ -513,8 +609,15 @@ Each change was made in place above, on 2026-11-14, from the three follow-up tes
 | [f02-factor-refinements.md](harmonization-tests-research/f02-factor-refinements.md) | Follow-up: does any refinement of the factor beat one all-hours factor? |
 | [f03-availability-flag.md](harmonization-tests-research/f03-availability-flag.md) | Follow-up: a per-day availability flag, and the VIIRS satellites combined with it |
 | [_cross-check.md](harmonization-tests-research/_cross-check.md) | Reconciled numbers and conflicting conclusions |
+| [h00-definitions.md](harmonization-tests-research/h00-definitions.md) | Fourth follow-up: the shared series, class schemes and protocols |
+| [h01-rank-classes-hindcast.md](harmonization-tests-research/h01-rank-classes-hindcast.md) | Fourth follow-up: does the converted baseline still win under rank classes? |
+| [h02-current-month-source.md](harmonization-tests-research/h02-current-month-source.md) | Fourth follow-up: the current month from NOAA-20 or the combined series |
+| [h03-forward-configuration.md](harmonization-tests-research/h03-forward-configuration.md) | Fourth follow-up: NOAA-20 and NOAA-21 against a mixed baseline, 2022–2026 |
+| [h04-real-record-rank-classes.md](harmonization-tests-research/h04-real-record-rank-classes.md) | Fourth follow-up: the real record under rank classes |
+| [_cross-check-hindcast.md](harmonization-tests-research/_cross-check-hindcast.md) | Fourth follow-up: reconciled numbers and spot checks |
 
 - **AI assistance.** The tests, source checks and this write-up were produced with AI agents (Claude) on 14 November 2026: 29 agents ran and checked the analyses, and the results were aggregated into this document. The cross-field approaches were proposed by the AI assistant from memory and then sourced and tested. The Space Apps submission guide requires that such use be acknowledged, and says AI should not be used to come up with the idea of how to solve the challenge. The choice of method is the team's.
 - **AI assistance in the follow-ups.** The three follow-up tests were run later on 14 November 2026 by AI agents (Claude): for each, one agent ran the analysis and a second re-ran it and recomputed it independently. The review of the real-length baseline added two remedies to those the analyst tested. The section "Follow-up tests", the updates elsewhere in this document and the corrections listed under "Changes since first compiled" were written by an AI agent from those working files. A final review by an AI agent the same day re-checked them against the working files and the catalogue, and carried the follow-up results into the other three documents.
+- **AI assistance in the fourth follow-up.** On 14 November 2026 the team asked the AI assistant (Claude) for a single best option. It suggested classing months by rank and taking the current month from the combined VIIRS series, and noted that neither had been through the class test. The team asked for that test. Nine AI agents ran it: four analyses, each re-run and independently recomputed by a second agent, and a cross-check that rebuilt the headline numbers with its own code. The assistant wrote the shared definitions beforehand and wrote the section "Rank classes and the combined VIIRS series" from the working files. The test contradicted one thing the assistant had suggested: rank classes are not clearly less sensitive to the level of the converted years.
 - **Limits of the whole exercise.** One box and ten stable-orbit years, dominated by three large fire seasons (2017, 2018, 2021). The 202 splits reuse those ten years, so the spread across splits understates the uncertainty. The answer each design is scored against is a nine-year VIIRS median, not fire itself.
 - **Scripts and tables.** The working files name the scripts and result tables behind each number. Those are kept outside version control with the cached data.
